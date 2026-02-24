@@ -1,0 +1,6 @@
+@whistleblowerNews_HostAddress = http://localhost:5089
+
+GET {{whistleblowerNews_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,6 +1,130 @@
 @whistleblowerNews_HostAddress = http://localhost:5089
 
-GET {{whistleblowerNews_HostAddress}}/weatherforecast/
+### Login as editor
+POST {{whistleblowerNews_HostAddress}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "editor",
+  "password": "editor123"
+}
+
+### Login as writer
+POST {{whistleblowerNews_HostAddress}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "writer",
+  "password": "writer123"
+}
+
+### Login as subscriber
+POST {{whistleblowerNews_HostAddress}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "subscriber",
+  "password": "subscriber123"
+}
+
+### Login as investigator
+POST {{whistleblowerNews_HostAddress}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "investigator",
+  "password": "investigator123"
+}
+
+### Get all articles (public)
+GET {{whistleblowerNews_HostAddress}}/articles
 Accept: application/json
 
-###
+### Get single article (public)
+GET {{whistleblowerNews_HostAddress}}/articles/1
+Accept: application/json
+
+### Create article (Writer)
+POST {{whistleblowerNews_HostAddress}}/articles
+Authorization: Bearer YOUR_WRITER_TOKEN
+Content-Type: application/json
+
+{
+  "title": "New article",
+  "content": "Article content"
+}
+
+### Update article (Writer owner or Editor)
+PUT {{whistleblowerNews_HostAddress}}/articles/1
+Authorization: Bearer YOUR_TOKEN
+Content-Type: application/json
+
+{
+  "title": "Updated title",
+  "content": "Updated content"
+}
+
+### Delete article (Writer owner or Editor)
+DELETE {{whistleblowerNews_HostAddress}}/articles/1
+Authorization: Bearer YOUR_TOKEN
+
+### Get comments for article (public)
+GET {{whistleblowerNews_HostAddress}}/articles/1/comments
+Accept: application/json
+
+### Create comment (Subscriber)
+POST {{whistleblowerNews_HostAddress}}/articles/1/comments
+Authorization: Bearer YOUR_SUBSCRIBER_TOKEN
+Content-Type: application/json
+
+{
+  "content": "Nice article"
+}
+
+### Update comment (Subscriber owner or Editor)
+PUT {{whistleblowerNews_HostAddress}}/comments/1
+Authorization: Bearer YOUR_TOKEN
+Content-Type: application/json
+
+{
+  "content": "Updated comment"
+}
+
+### Delete comment (Subscriber owner or Editor)
+DELETE {{whistleblowerNews_HostAddress}}/comments/1
+Authorization: Bearer YOUR_TOKEN
+
+### Delete comment on own article (Writer)
+DELETE {{whistleblowerNews_HostAddress}}/articles/1/comments/1
+Authorization: Bearer YOUR_WRITER_TOKEN
+
+### Create report (anonymous)
+POST {{whistleblowerNews_HostAddress}}/reports
+Content-Type: application/json
+
+{
+  "title": "Unsafe behavior",
+  "description": "Details of the issue"
+}
+
+### Get report status (anonymous with token)
+GET {{whistleblowerNews_HostAddress}}/reports/YOUR_CASE_ID?token=YOUR_REPORTER_TOKEN
+Accept: application/json
+
+### Investigator request more info
+POST {{whistleblowerNews_HostAddress}}/reports/YOUR_CASE_ID/request-info
+Authorization: Bearer YOUR_INVESTIGATOR_TOKEN
+Content-Type: application/json
+
+{
+  "content": "Please provide more details"
+}
+
+### Update report status (Investigator or Editor)
+PATCH {{whistleblowerNews_HostAddress}}/reports/YOUR_CASE_ID/status
+Authorization: Bearer YOUR_INVESTIGATOR_OR_EDITOR_TOKEN
+Content-Type: application/json
+
+{
+  "status": "Closed"
+}

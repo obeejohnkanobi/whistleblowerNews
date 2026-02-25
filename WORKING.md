@@ -29,6 +29,42 @@ and add it to the solution so integration tests can be added in A3/A4.)
 
 (That matches how Codex is intended to work: context + incremental work + checkpoints. )
 
+Status / TODO (update as work completes)
+
+- [x] A0 Repo scaffolding (README + tests)
+- [x] A1 Domain entities + EF mappings (Articles/Comments)
+- [x] A2 Articles endpoints (public reads + writer/editor rules)
+- [x] A3 Authorization policies + integration tests
+- [x] A4 Comments endpoints + rules + tests
+- [x] B0 Whistleblower design doc + diagrams + README link
+- [x] B1 Whistleblower domain + migration
+- [x] B2 Anonymous report flow + tests
+- [x] B3 Investigator workflow + audit + tests
+
+Note: No Swagger/UI required. We will build our own UI separately.
+
+Assignment coverage checklist (ensure nothing is missed)
+
+Assignment 2 (Authorization):
+- [x] Guest can read articles and comments (public GET endpoints)
+- [x] Subscriber can create/update/delete their own comments
+- [x] Editor can read/edit/delete all articles
+- [x] Editor can read/edit/delete all comments
+- [x] Writer can read all articles
+- [x] Writer can create/edit/delete their own articles
+- [x] Writer can delete comments on their own articles
+- [x] Integration tests prove each rule (Guest/Subscriber/Writer/Editor)
+- [x] REST API only (no ads, no UI)
+
+Assignment 1 (Secure design):
+- [x] Document Requirements, Security requirements, Use-cases, Misuse-cases
+- [x] Include diagrams (Mermaid) that render on GitHub
+- [x] Anonymous reporting supported (no identity required)
+- [x] Investigator workflow supported (request info, update status)
+- [x] Reporter can follow case progress securely (token-based access)
+- [x] Store only hashed reporter secret (no plaintext)
+- [x] Tests prove reporter token checks + investigator access
+
 1) Git checkpoints (do this before each Codex task)
 
 In terminal:

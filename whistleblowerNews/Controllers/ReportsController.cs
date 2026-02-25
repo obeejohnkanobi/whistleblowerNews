@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using whistleblowerNews.Application.Reports;
 using whistleblowerNews.Authorization;
@@ -16,14 +17,17 @@ namespace whistleblowerNews.Controllers;
 public sealed class ReportsController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
+    private readonly ILogger<ReportsController> _logger;
 
-    public ReportsController(ApplicationDbContext db)
+    public ReportsController(ApplicationDbContext db, ILogger<ReportsController> logger)
     {
         _db = db;
+        _logger = logger;
     }
 
     // POST /reports (anonymous)
     [HttpPost]
+    [EnableRateLimiting("report-submit-policy")]
     public async Task<ActionResult<CreateReportResponse>> CreateReport(
         [FromBody] CreateReportRequest request,
         CancellationToken ct)
@@ -46,15 +50,22 @@ public sealed class ReportsController : ControllerBase
         return CreatedAtAction(nameof(GetReport), new { caseId }, new CreateReportResponse(caseId, token));
     }
 
-    // GET /reports/{caseId}?token=... (anonymous with token)
+    // GET /reports/{caseId} (anonymous with token)
     [HttpGet("{caseId:guid}")]
+    [EnableRateLimiting("reporter-token-policy")]
     public async Task<ActionResult<ReportDetailsDto>> GetReport(
         Guid caseId,
         [FromQuery] string? token,
         CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(token))
+        var headerToken = Request.Headers["X-Reporter-Token"].FirstOrDefault();
+        var tokenValue = !string.IsNullOrWhiteSpace(headerToken) ? headerToken : token;
+
+        if (string.IsNullOrWhiteSpace(tokenValue))
             return Unauthorized("Reporter token is required.");
+
+        if (string.IsNullOrWhiteSpace(headerToken) && !string.IsNullOrWhiteSpace(token))
+            _logger.LogWarning("Reporter token supplied via query string is deprecated. Use X-Reporter-Token header.");
 
         var report = await _db.Reports
             .AsNoTracking()
@@ -65,7 +76,7 @@ public sealed class ReportsController : ControllerBase
         if (report is null)
             return NotFound();
 
-        if (report.ReporterSecret is null || !VerifyReporterToken(token, report.ReporterSecret.SecretHash))
+        if (report.ReporterSecret is null || !VerifyReporterToken(tokenValue, report.ReporterSecret.SecretHash))
             return Forbid();
 
         var messages = report.Messages

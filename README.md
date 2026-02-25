@@ -52,9 +52,27 @@ See `docs/whistleblower-design.md` for requirements, security requirements, use-
 
 ## Whistleblower endpoints (Assignment 1)
 - `POST /reports` (anonymous, returns caseId + reporterToken once)
-- `GET /reports/{caseId}?token=...` (anonymous with reporter token)
+- `GET /reports/{caseId}` (anonymous with reporter token header `X-Reporter-Token`)
 - `POST /reports/{caseId}/request-info` (Investigator or Editor)
 - `PATCH /reports/{caseId}/status` (Investigator or Editor)
+
+Reporter token transport: use the `X-Reporter-Token` header. Query string tokens are deprecated and kept only for PoC compatibility.
+
+### Whistleblower curl examples
+```bash
+# Create report (anonymous)
+curl -X POST http://localhost:5089/reports \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Unsafe behavior","description":"Details"}'
+
+# Follow report (anonymous, header token)
+curl http://localhost:5089/reports/YOUR_CASE_ID \
+  -H "X-Reporter-Token: YOUR_REPORTER_TOKEN"
+```
+
+### Rate limiting (PoC)
+Rate limiting is enabled for report submission and reporter token endpoints to mitigate brute-force attempts.
+Default PoC limits are configurable in `whistleblowerNews/appsettings.json` and should be tuned for production.
 
 ## Tests
 ```powershell

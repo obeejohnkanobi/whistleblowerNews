@@ -1,7 +1,10 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using whistleblowerNews.Authorization;
 using whistleblowerNews.Domain;
@@ -27,6 +30,7 @@ if (string.IsNullOrWhiteSpace(signingKey))
 if (signingKey.Length < 32)
     throw new InvalidOperationException("Jwt:SigningKey must be at least 32 characters long.");
 
+
 // --- Services (DI container) ---
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(connectionString));
@@ -36,6 +40,46 @@ builder.Services.AddOpenApi();
 
 // JWT token creation service
 builder.Services.AddSingleton<JwtTokenService>();
+
+// Rate limiting (anti brute-force)
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy("reporter-token-policy", context =>
+    {
+        var config = context.RequestServices.GetRequiredService<IConfiguration>();
+        var permitLimit = config.GetValue("RateLimiting:ReporterToken:PermitLimit", 5);
+        var windowSeconds = config.GetValue("RateLimiting:ReporterToken:WindowSeconds", 10);
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = permitLimit,
+                Window = TimeSpan.FromSeconds(windowSeconds),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            });
+    });
+
+    options.AddPolicy("report-submit-policy", context =>
+    {
+        var config = context.RequestServices.GetRequiredService<IConfiguration>();
+        var permitLimit = config.GetValue("RateLimiting:ReportSubmit:PermitLimit", 3);
+        var windowSeconds = config.GetValue("RateLimiting:ReportSubmit:WindowSeconds", 60);
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = permitLimit,
+                Window = TimeSpan.FromSeconds(windowSeconds),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            });
+    });
+});
 
 // Authentication (who are you?)
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -98,6 +142,7 @@ if (app.Environment.IsDevelopment())
 
 // --- Middleware pipeline (order matters!) ---
 app.UseHttpsRedirection();
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();

@@ -12,6 +12,8 @@
 - No reporter identity is collected or stored by default.
 - Reporter access tokens are high-entropy and stored only as salted hashes.
 - Token verification uses constant-time comparison.
+- Reporter token is sent via header `X-Reporter-Token` (query token is deprecated).
+- Rate limiting is applied to report submission and reporter token endpoints.
 - Least-privilege access control for investigators and editors.
 - Investigator actions require assignment checks.
 - Audit trail records case actions and actors.
@@ -34,6 +36,27 @@
 - Tampering with report history.
   Mitigation: append-only audit logs and message history.
 
+## Threat model (mini)
+
+| Threat | Impact | Mitigation | Residual Risk |
+| ------ | ------ | ---------- | ------------- |
+| Token leakage via URLs/logs | Unauthorized report access | Header-based token transport, no token logging, query token deprecated | Token could still be phished or shared |
+| Token brute force / enumeration | Unauthorized access | High-entropy tokens, hashed storage, rate limiting on token endpoint | Distributed attacks may still probe |
+| Investigator abuse / overreach | Unauthorized case changes | Role policies + assignment checks + audit log | Insider risk remains, needs monitoring |
+| SQL injection | Data compromise | EF Core parameterization, no raw SQL endpoints | Misuse of raw SQL in future changes |
+| Sensitive data exposure via error messages | Information leakage | Generic error messages, no secret values returned | New endpoints could add verbose errors |
+| Insider access to audit logs | Privacy breach | No public audit endpoints; DB access restricted | DB admin access still sensitive |
+
+## Audit logging
+The audit log is append-only; the API exposes no update/delete endpoints for audit entries.
+
+## PoC limitations / production hardening
+- Rate limit tuning and WAF integration for real-world traffic patterns.
+- Enforce header-only token transport and HTTPS-only access.
+- Secret storage hardening (rotation, HSM/KMS-backed secrets if applicable).
+- Monitoring and alerting for abnormal access patterns and investigator actions.
+- Optional secure message channel and metadata minimization for reporters.
+
 ## Sequence diagram (reporter flow)
 ```mermaid
 sequenceDiagram
@@ -47,7 +70,7 @@ sequenceDiagram
     DB-->>API: CaseId
     API-->>Reporter: CaseId + reporterToken (one-time)
 
-    Reporter->>API: GET /reports/{caseId}?token=...
+    Reporter->>API: GET /reports/{caseId} (X-Reporter-Token header)
     API->>DB: Verify token hash + load report/messages
     DB-->>API: Report status + messages
     API-->>Reporter: Status + messages

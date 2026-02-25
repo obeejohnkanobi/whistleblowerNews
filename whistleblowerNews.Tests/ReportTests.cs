@@ -56,7 +56,8 @@ public sealed class ReportTests : IClassFixture<TestWebApplicationFactory>
             new CreateReportRequest("Title", "Description"));
 
         var payload = await create.Content.ReadFromJsonAsync<CreateReportResponse>();
-        var response = await client.GetAsync($"/reports/{payload!.CaseId}?token=wrong");
+        var request = CreateReportRequest(payload!.CaseId, "wrong");
+        var response = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
@@ -70,13 +71,48 @@ public sealed class ReportTests : IClassFixture<TestWebApplicationFactory>
             new CreateReportRequest("Title", "Description"));
 
         var payload = await create.Content.ReadFromJsonAsync<CreateReportResponse>();
-        var response = await client.GetAsync($"/reports/{payload!.CaseId}?token={payload.ReporterToken}");
+        var request = CreateReportRequest(payload!.CaseId, payload.ReporterToken);
+        var response = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var report = await response.Content.ReadFromJsonAsync<ReportDetailsDto>();
         Assert.NotNull(report);
         Assert.Equal("Open", report!.Status);
+    }
+
+    [Fact]
+    public async Task GetReport_QueryToken_StillWorksForBackwardCompatibility()
+    {
+        var client = _factory.CreateClient();
+        var create = await client.PostAsJsonAsync(
+            "/reports",
+            new CreateReportRequest("Title", "Description"));
+
+        var payload = await create.Content.ReadFromJsonAsync<CreateReportResponse>();
+        var response = await client.GetAsync($"/reports/{payload!.CaseId}?token={payload.ReporterToken}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetReport_HeaderToken_TakesPrecedenceOverQuery()
+    {
+        var client = _factory.CreateClient();
+        var create = await client.PostAsJsonAsync(
+            "/reports",
+            new CreateReportRequest("Title", "Description"));
+
+        var payload = await create.Content.ReadFromJsonAsync<CreateReportResponse>();
+
+        var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"/reports/{payload!.CaseId}?token=wrong");
+        request.Headers.Add("X-Reporter-Token", payload.ReporterToken);
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
@@ -120,8 +156,8 @@ public sealed class ReportTests : IClassFixture<TestWebApplicationFactory>
 
         Assert.Equal(HttpStatusCode.OK, requestInfo.StatusCode);
 
-        var reportResponse = await client.GetAsync(
-            $"/reports/{payload.CaseId}?token={payload.ReporterToken}");
+        var reportRequest = CreateReportRequest(payload.CaseId, payload.ReporterToken);
+        var reportResponse = await client.SendAsync(reportRequest);
 
         var report = await reportResponse.Content.ReadFromJsonAsync<ReportDetailsDto>();
         Assert.NotNull(report);
@@ -166,5 +202,12 @@ public sealed class ReportTests : IClassFixture<TestWebApplicationFactory>
             new UpdateReportStatusRequest("Closed"));
 
         Assert.Equal(HttpStatusCode.OK, editorUpdate.StatusCode);
+    }
+
+    private static HttpRequestMessage CreateReportRequest(Guid caseId, string token)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, $"/reports/{caseId}");
+        request.Headers.Add("X-Reporter-Token", token);
+        return request;
     }
 }

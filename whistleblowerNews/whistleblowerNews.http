@@ -107,7 +107,12 @@ Content-Type: application/json
   "description": "Details of the issue"
 }
 
-### Get report status (anonymous with token)
+### Get report status (anonymous with token header)
+GET {{whistleblowerNews_HostAddress}}/reports/YOUR_CASE_ID
+X-Reporter-Token: YOUR_REPORTER_TOKEN
+Accept: application/json
+
+### Get report status (deprecated query token)
 GET {{whistleblowerNews_HostAddress}}/reports/YOUR_CASE_ID?token=YOUR_REPORTER_TOKEN
 Accept: application/json
 

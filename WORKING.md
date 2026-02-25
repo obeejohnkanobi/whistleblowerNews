@@ -65,6 +65,138 @@ Assignment 1 (Secure design):
 - [x] Store only hashed reporter secret (no plaintext)
 - [x] Tests prove reporter token checks + investigator access
 
+# TODO (Codex) — SSD Security Polish
+
+## [x] 1) Reporter token: move from query string → header (keep PoC compatible)
+
+Goal: Avoid leaking reporter token via browser history, server logs, referrers, proxies.
+
+Tasks
+* Update reporter “follow progress” endpoint to read token from header:
+* Prefer header: `X-Reporter-Token`
+* Optionally allow query string `?token=` for backward compatibility (PoC), but:
+* If query token is used, log a warning (without logging the token)
+* Mark query token as deprecated in docs
+
+Files likely involved
+* `Controllers/ReportsController.cs`
+* Any shared token parsing helper (if exists)
+
+Acceptance criteria
+* Reporter can access report status using: `X-Reporter-Token: <token>`
+* Token value is never written to logs
+* Docs updated to recommend header usage
+* Existing tests updated + new test added for header behavior
+
+## [x] 2) Rate limiting (anti brute-force) for report/token endpoints
+
+Goal: Mitigate token guessing, abuse, and API spam.
+
+Scope (minimum)
+* Apply rate limiting to:
+* Reporter access endpoints (where token is used)
+* Report submission endpoint (anonymous reporting)
+* Use per-IP throttling (simple and effective)
+
+Implementation idea (ASP.NET Core)
+* Use built-in ASP.NET Core rate limiting middleware (if target framework supports it)
+* Define rate-limit policies such as:
+* `reporter-token-policy`: stricter (e.g., 5 req / 10 sec)
+* `report-submit-policy`: moderate (e.g., 3 req / 60 sec)
+
+Acceptance criteria
+* Excess requests return `429 Too Many Requests`
+* Policies are named and applied explicitly (not “global surprise”)
+* Docs mention:
+* why it exists
+* rough limits
+* that values are PoC and should be tuned in production
+
+## [x] 3) Threat model mini-table in `docs/whistleblower-design.md`
+
+Goal: Show SSD maturity with a compact threat model that is easy to grade.
+
+Tasks
+Add a small table:
+
+| Threat | Impact | Mitigation | Residual Risk |
+| ------ | ------ | ---------- | ------------- |
+
+Include at least these threats:
+* Token leakage via URLs/logs
+* Token brute force / enumeration
+* Investigator abuse / overreach
+* SQL injection (even if EF/param queries used)
+* Sensitive data exposure via error messages
+* Insider access to audit logs
+
+Acceptance criteria
+* Table exists and is specific to this implementation
+* Each mitigation points to a concrete control (policy/handler/hash/rate-limit/etc.)
+
+## [x] 4) Audit log integrity statement (append-only)
+
+Goal: Make it explicit that audit trails are not editable (integrity).
+
+Tasks
+* Add one sentence in `docs/whistleblower-design.md` under audit logging:
+* Example: “The audit log is append-only; the API exposes no update/delete endpoints for audit entries.”
+
+Acceptance criteria
+* Doc contains the explicit statement
+* Repo contains no endpoint that edits audit entries
+
+## [x] 5) Security docs: explicitly document tradeoffs (PoC vs production)
+
+Goal: Make the design look intentional and mature (a big grading boost).
+
+Tasks
+In `docs/whistleblower-design.md`, add a “PoC limitations / production hardening” section including:
+* Rate limit tuning + WAF
+* Token transport header requirement + HTTPS-only
+* Secrets storage + rotation
+* Monitoring and alerting
+* Optional: secure message channel / metadata minimization
+
+Acceptance criteria
+* Section exists
+* It clearly differentiates “what we did now” vs “what we’d do in production”
+
+## [x] 6) Tests update plan
+
+Goal: Prove the security changes didn’t break behavior.
+
+Tasks
+* Update existing tests that use `?token=`
+* Add new tests:
+* Reporter access works via `X-Reporter-Token`
+* Rate limiting returns 429 after threshold (integration test if feasible)
+
+Acceptance criteria
+* `dotnet test` passes
+* Token is verified correctly and constant-time comparison is still used
+* No test ever prints secrets into output/logs
+
+## [x] 7) README quick updates
+
+Goal: Make the repo “submit-ready” and easy to run.
+
+Tasks
+* In `README.md`, update examples:
+* show header usage for reporter token
+* mention rate limiting exists
+* how to run tests
+
+Acceptance criteria
+* README contains exact curl examples (or Swagger notes) showing header token usage
+* README mentions that query token is deprecated (if kept)
+
+# After this: Frontend phase
+
+Once the above is done and stable:
+* Start minimal frontend (case submission + reporter follow-up + investigator view)
+* Focus on safe UX (no accidental identity collection, no token stored in localStorage, no token in URL)
+
 1) Git checkpoints (do this before each Codex task)
 
 In terminal:

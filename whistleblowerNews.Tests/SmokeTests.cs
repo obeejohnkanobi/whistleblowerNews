@@ -31,7 +31,11 @@ public sealed class TestWebApplicationFactory : WebApplicationFactory<Program>
                 ["ConnectionStrings:DefaultConnection"] = "Data Source=:memory:",
                 ["Jwt:Issuer"] = issuer,
                 ["Jwt:Audience"] = audience,
-                ["Jwt:SigningKey"] = signingKey
+                ["Jwt:SigningKey"] = signingKey,
+                ["RateLimiting:ReporterToken:PermitLimit"] = "1000",
+                ["RateLimiting:ReporterToken:WindowSeconds"] = "10",
+                ["RateLimiting:ReportSubmit:PermitLimit"] = "1000",
+                ["RateLimiting:ReportSubmit:WindowSeconds"] = "60"
             };
 
             config.AddInMemoryCollection(settings);

@@ -35,7 +35,7 @@ dotnet ef database update --project src/WhistleblowerNews.Infrastructure --start
 - API login endpoint `/api/auth/login` sets the auth cookie
 
 ## HTTP examples
-See `whistleblowerNews/whistleblowerNews.http` for sample requests.
+See `src/WhistleblowerNews.Web/whistleblowerNews.http` for sample requests.
 
 ### API login example
 ```bash

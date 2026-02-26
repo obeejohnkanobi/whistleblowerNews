@@ -1,0 +1,69 @@
+@model WhistleblowerNews.Web.Models.Articles.ArticleListViewModel
+@{
+    ViewData["Title"] = "Latest Articles";
+}
+
+<div class="page-header">
+    <div>
+        <h2>Latest Articles</h2>
+        <p class="text-muted">Sorted by latest. Page size 10.</p>
+    </div>
+    <div class="ad-slot">
+        <div class="ad-title">Sponsored</div>
+        <p>Ad space for guests. Subscribers enjoy an ad-free experience.</p>
+    </div>
+</div>
+
+@if (!Model.Articles.Any())
+{
+    <div class="card">
+        <p>No articles have been published yet.</p>
+    </div>
+}
+else
+{
+    <div class="news-list">
+        @foreach (var article in Model.Articles)
+        {
+            var preview = article.Content.Length > 220
+                ? $"{article.Content[..220]}..."
+                : article.Content;
+
+            <article class="card news-card">
+                <div class="news-meta">
+                    <span>@article.AuthorUsername</span>
+                    <span>@article.CreatedAt.ToString("u")</span>
+                </div>
+                <h3 class="news-title">@article.Title</h3>
+                <p class="news-preview">@preview</p>
+                <a class="btn btn-outline-primary"
+                   asp-area="Public"
+                   asp-controller="Articles"
+                   asp-action="Details"
+                   asp-route-id="@article.Id">Read Article</a>
+            </article>
+        }
+    </div>
+}
+
+<div class="pagination">
+    <span class="text-muted">Page @Model.Page of @Model.TotalPages</span>
+    <div class="pager">
+        @if (Model.HasPreviousPage)
+        {
+            <a class="btn btn-sm btn-outline-secondary" asp-route-page="@(Model.Page - 1)">Previous</a>
+        }
+        else
+        {
+            <span class="btn btn-sm btn-outline-secondary disabled">Previous</span>
+        }
+        @if (Model.HasNextPage)
+        {
+            <a class="btn btn-sm btn-outline-secondary" asp-route-page="@(Model.Page + 1)">Next</a>
+        }
+        else
+        {
+            <span class="btn btn-sm btn-outline-secondary disabled">Next</span>
+        }
+    </div>
+</div>

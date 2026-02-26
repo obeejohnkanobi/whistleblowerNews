@@ -1,0 +1,35 @@
+@model IReadOnlyList<WhistleblowerNews.Application.Articles.ArticleDto>
+@{
+    ViewData["Title"] = "My Articles";
+}
+
+<h2>My Articles</h2>
+
+<a class="btn btn-primary mb-3" asp-action="Create">New Article</a>
+
+<table class="table">
+    <thead>
+    <tr>
+        <th>Title</th>
+        <th>Created</th>
+        <th></th>
+    </tr>
+    </thead>
+    <tbody>
+    @foreach (var article in Model)
+    {
+        <tr>
+            <td>@article.Title</td>
+            <td>@article.CreatedAt.ToString("u")</td>
+            <td>
+                <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@article.Id">Edit</a>
+                <a class="btn btn-sm btn-outline-secondary" asp-action="Comments" asp-route-id="@article.Id">Comments</a>
+                <form asp-action="Delete" asp-route-id="@article.Id" method="post" class="d-inline" data-confirm="Delete this article?">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                </form>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

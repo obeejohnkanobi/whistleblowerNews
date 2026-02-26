@@ -1,0 +1,34 @@
+@model IReadOnlyList<WhistleblowerNews.Application.Reports.ReportSummaryDto>
+@{
+    ViewData["Title"] = "Assigned Reports";
+}
+
+<h2>Assigned Reports</h2>
+
+<table class="table">
+    <thead>
+    <tr>
+        <th>Case</th>
+        <th>Title</th>
+        <th>Status</th>
+        <th>Created</th>
+        <th></th>
+    </tr>
+    </thead>
+    <tbody>
+    @foreach (var report in Model)
+    {
+        <tr>
+            <td>@report.CaseId</td>
+            <td>@report.Title</td>
+            <td>@report.Status</td>
+            <td>@report.CreatedAt.ToString("u")</td>
+            <td>
+                <a class="btn btn-sm btn-outline-primary"
+                   asp-action="Details"
+                   asp-route-caseId="@report.CaseId">View</a>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

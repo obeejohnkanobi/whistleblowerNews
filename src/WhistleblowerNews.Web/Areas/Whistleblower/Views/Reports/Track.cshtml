@@ -1,0 +1,28 @@
+@model WhistleblowerNews.Web.Models.Reports.ReportTrackViewModel
+@{
+    ViewData["Title"] = "Track Report";
+}
+
+<h2>Track Report</h2>
+
+<div class="alert alert-warning" role="status" aria-live="polite" aria-atomic="true">
+    Keep your token safe; it cannot be recovered. Do not paste it into a URL or share it.
+</div>
+
+<form asp-action="Track" method="post">
+    @Html.AntiForgeryToken()
+
+    <div class="mb-3">
+        <label asp-for="CaseId" class="form-label">Case ID</label>
+        <input asp-for="CaseId" class="form-control" autocomplete="off" autocapitalize="off" spellcheck="false" />
+        <span asp-validation-for="CaseId" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="ReporterToken" class="form-label">Reporter Token</label>
+        <input asp-for="ReporterToken" type="password" class="form-control" autocomplete="off" autocapitalize="off" spellcheck="false" />
+        <span asp-validation-for="ReporterToken" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Track</button>
+</form>

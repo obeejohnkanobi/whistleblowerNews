@@ -1,0 +1,59 @@
+@model WhistleblowerNews.Web.Models.Articles.WriterArticleCommentsViewModel
+@{
+    ViewData["Title"] = "Moderate Comments";
+}
+
+<div class="page-header">
+    <div>
+        <h2>Moderate Comments</h2>
+        <p class="text-muted">Article: @Model.Article.Title</p>
+    </div>
+    <div>
+        <a class="btn btn-outline-secondary" asp-action="Index">Back to My Articles</a>
+    </div>
+</div>
+
+@if (!Model.Comments.Any())
+{
+    <div class="card">
+        <p>No comments yet.</p>
+    </div>
+}
+else
+{
+    <div class="card">
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Author</th>
+                <th>Content</th>
+                <th>Created</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var comment in Model.Comments)
+            {
+                <tr>
+                    <td>@comment.Username</td>
+                    <td class="comment-body">@comment.Content</td>
+                    <td>@comment.CreatedAt.ToString("u")</td>
+                    <td>
+                        <form asp-area="Writer"
+                              asp-controller="Comments"
+                              asp-action="Delete"
+                              method="post"
+                              class="d-inline"
+                              data-confirm="Delete this comment?">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="articleId" value="@Model.Article.Id" />
+                            <input type="hidden" name="commentId" value="@comment.Id" />
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

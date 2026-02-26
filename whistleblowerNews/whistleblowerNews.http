@@ -1,7 +1,7 @@
-@whistleblowerNews_HostAddress = http://localhost:5089
+@whistleblowerNews_HostAddress = http://localhost:5048
 
-### Login as editor
-POST {{whistleblowerNews_HostAddress}}/auth/login
+### Login as editor (sets auth cookie)
+POST {{whistleblowerNews_HostAddress}}/api/auth/login
 Content-Type: application/json
 
 {
@@ -9,8 +9,8 @@ Content-Type: application/json
   "password": "editor123"
 }
 
-### Login as writer
-POST {{whistleblowerNews_HostAddress}}/auth/login
+### Login as writer (sets auth cookie)
+POST {{whistleblowerNews_HostAddress}}/api/auth/login
 Content-Type: application/json
 
 {
@@ -18,8 +18,8 @@ Content-Type: application/json
   "password": "writer123"
 }
 
-### Login as subscriber
-POST {{whistleblowerNews_HostAddress}}/auth/login
+### Login as subscriber (sets auth cookie)
+POST {{whistleblowerNews_HostAddress}}/api/auth/login
 Content-Type: application/json
 
 {
@@ -27,8 +27,8 @@ Content-Type: application/json
   "password": "subscriber123"
 }
 
-### Login as investigator
-POST {{whistleblowerNews_HostAddress}}/auth/login
+### Login as investigator (sets auth cookie)
+POST {{whistleblowerNews_HostAddress}}/api/auth/login
 Content-Type: application/json
 
 {
@@ -37,16 +37,16 @@ Content-Type: application/json
 }
 
 ### Get all articles (public)
-GET {{whistleblowerNews_HostAddress}}/articles
+GET {{whistleblowerNews_HostAddress}}/api/articles
 Accept: application/json
 
 ### Get single article (public)
-GET {{whistleblowerNews_HostAddress}}/articles/1
+GET {{whistleblowerNews_HostAddress}}/api/articles/1
 Accept: application/json
 
 ### Create article (Writer)
-POST {{whistleblowerNews_HostAddress}}/articles
-Authorization: Bearer YOUR_WRITER_TOKEN
+POST {{whistleblowerNews_HostAddress}}/api/articles
+# Cookie: WhistleblowerNews.Auth=YOUR_COOKIE
 Content-Type: application/json
 
 {
@@ -55,8 +55,8 @@ Content-Type: application/json
 }
 
 ### Update article (Writer owner or Editor)
-PUT {{whistleblowerNews_HostAddress}}/articles/1
-Authorization: Bearer YOUR_TOKEN
+PUT {{whistleblowerNews_HostAddress}}/api/articles/1
+# Cookie: WhistleblowerNews.Auth=YOUR_COOKIE
 Content-Type: application/json
 
 {
@@ -65,16 +65,16 @@ Content-Type: application/json
 }
 
 ### Delete article (Writer owner or Editor)
-DELETE {{whistleblowerNews_HostAddress}}/articles/1
-Authorization: Bearer YOUR_TOKEN
+DELETE {{whistleblowerNews_HostAddress}}/api/articles/1
+# Cookie: WhistleblowerNews.Auth=YOUR_COOKIE
 
 ### Get comments for article (public)
-GET {{whistleblowerNews_HostAddress}}/articles/1/comments
+GET {{whistleblowerNews_HostAddress}}/api/articles/1/comments
 Accept: application/json
 
 ### Create comment (Subscriber)
-POST {{whistleblowerNews_HostAddress}}/articles/1/comments
-Authorization: Bearer YOUR_SUBSCRIBER_TOKEN
+POST {{whistleblowerNews_HostAddress}}/api/articles/1/comments
+# Cookie: WhistleblowerNews.Auth=YOUR_COOKIE
 Content-Type: application/json
 
 {
@@ -82,8 +82,8 @@ Content-Type: application/json
 }
 
 ### Update comment (Subscriber owner or Editor)
-PUT {{whistleblowerNews_HostAddress}}/comments/1
-Authorization: Bearer YOUR_TOKEN
+PUT {{whistleblowerNews_HostAddress}}/api/comments/1
+# Cookie: WhistleblowerNews.Auth=YOUR_COOKIE
 Content-Type: application/json
 
 {
@@ -91,15 +91,15 @@ Content-Type: application/json
 }
 
 ### Delete comment (Subscriber owner or Editor)
-DELETE {{whistleblowerNews_HostAddress}}/comments/1
-Authorization: Bearer YOUR_TOKEN
+DELETE {{whistleblowerNews_HostAddress}}/api/comments/1
+# Cookie: WhistleblowerNews.Auth=YOUR_COOKIE
 
 ### Delete comment on own article (Writer)
-DELETE {{whistleblowerNews_HostAddress}}/articles/1/comments/1
-Authorization: Bearer YOUR_WRITER_TOKEN
+DELETE {{whistleblowerNews_HostAddress}}/api/articles/1/comments/1
+# Cookie: WhistleblowerNews.Auth=YOUR_COOKIE
 
 ### Create report (anonymous)
-POST {{whistleblowerNews_HostAddress}}/reports
+POST {{whistleblowerNews_HostAddress}}/api/reports
 Content-Type: application/json
 
 {
@@ -108,17 +108,13 @@ Content-Type: application/json
 }
 
 ### Get report status (anonymous with token header)
-GET {{whistleblowerNews_HostAddress}}/reports/YOUR_CASE_ID
+GET {{whistleblowerNews_HostAddress}}/api/reports/YOUR_CASE_ID
 X-Reporter-Token: YOUR_REPORTER_TOKEN
 Accept: application/json
 
-### Get report status (deprecated query token)
-GET {{whistleblowerNews_HostAddress}}/reports/YOUR_CASE_ID?token=YOUR_REPORTER_TOKEN
-Accept: application/json
-
 ### Investigator request more info
-POST {{whistleblowerNews_HostAddress}}/reports/YOUR_CASE_ID/request-info
-Authorization: Bearer YOUR_INVESTIGATOR_TOKEN
+POST {{whistleblowerNews_HostAddress}}/api/reports/YOUR_CASE_ID/request-info
+# Cookie: WhistleblowerNews.Auth=YOUR_COOKIE
 Content-Type: application/json
 
 {
@@ -126,8 +122,8 @@ Content-Type: application/json
 }
 
 ### Update report status (Investigator or Editor)
-PATCH {{whistleblowerNews_HostAddress}}/reports/YOUR_CASE_ID/status
-Authorization: Bearer YOUR_INVESTIGATOR_OR_EDITOR_TOKEN
+PATCH {{whistleblowerNews_HostAddress}}/api/reports/YOUR_CASE_ID/status
+# Cookie: WhistleblowerNews.Auth=YOUR_COOKIE
 Content-Type: application/json
 
 {

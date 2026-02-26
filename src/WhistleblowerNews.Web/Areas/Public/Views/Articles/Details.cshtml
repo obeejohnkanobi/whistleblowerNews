@@ -1,0 +1,60 @@
+@model WhistleblowerNews.Web.Models.Articles.ArticleDetailsViewModel
+@{
+    ViewData["Title"] = "Article";
+}
+
+<div class="page-header">
+    <div>
+        <h2>@Model.Article.Title</h2>
+        <p class="text-muted">By @Model.Article.AuthorUsername on @Model.Article.CreatedAt.ToString("u")</p>
+    </div>
+    @if (User.IsInRole("Subscriber"))
+    {
+        <div class="ad-slot ad-slot--clean">
+            <div class="ad-title">Subscriber Experience</div>
+            <p>Ad-free reading is enabled for subscribers.</p>
+        </div>
+    }
+    else
+    {
+        <div class="ad-slot">
+            <div class="ad-title">Sponsored</div>
+            <p>Ad space for guests. Subscribe for an ad-free experience.</p>
+        </div>
+    }
+</div>
+
+<div class="mb-4 article-body">
+    @Model.Article.Content
+</div>
+
+<h3>Comments</h3>
+@if (!Model.Comments.Any())
+{
+    <p>No comments yet.</p>
+}
+else
+{
+    <ul class="list-group mb-3">
+        @foreach (var comment in Model.Comments)
+        {
+            <li class="list-group-item">
+                <strong>@comment.Username</strong> (@comment.CreatedAt.ToString("u"))
+                <div class="comment-body">@comment.Content</div>
+            </li>
+        }
+    </ul>
+}
+
+@if (User.IsInRole("Subscriber"))
+{
+    <a class="btn btn-primary"
+       asp-area="Subscriber"
+       asp-controller="Comments"
+       asp-action="Create"
+       asp-route-articleId="@Model.Article.Id">Add Comment</a>
+}
+else
+{
+    <p class="text-muted">Login as a subscriber to add comments.</p>
+}

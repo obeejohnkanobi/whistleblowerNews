@@ -1,0 +1,60 @@
+@model WhistleblowerNews.Web.Models.Articles.EditorArticleListViewModel
+@{
+    ViewData["Title"] = "All Articles";
+}
+
+<div class="page-header">
+    <div>
+        <h2>All Articles</h2>
+        <p class="text-muted">Search by title or author username.</p>
+    </div>
+    <form method="get" class="filter-bar">
+        <label class="form-label" for="article-search">Search</label>
+        <input id="article-search" class="form-control" type="text" name="query" value="@Model.Query" placeholder="Title or author" />
+        <button type="submit" class="btn btn-sm btn-outline-primary">Filter</button>
+    </form>
+</div>
+
+<div class="danger-zone">
+    <div class="danger-title">Danger zone</div>
+    <p>Deleting an article is permanent and removes related comments.</p>
+</div>
+
+@if (!Model.Articles.Any())
+{
+    <div class="card">
+        <p>No articles match your filter.</p>
+    </div>
+}
+else
+{
+    <div class="card">
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Title</th>
+                <th>Author</th>
+                <th>Created</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var article in Model.Articles)
+            {
+                <tr>
+                    <td>@article.Title</td>
+                    <td>@article.AuthorUsername</td>
+                    <td>@article.CreatedAt.ToString("u")</td>
+                    <td>
+                        <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@article.Id">Edit</a>
+                        <form asp-action="Delete" asp-route-id="@article.Id" method="post" class="d-inline" data-confirm="Delete this article?">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

@@ -1,0 +1,29 @@
+@model WhistleblowerNews.Application.Reports.ReportDetailsDto
+@{
+    ViewData["Title"] = "Report Status";
+}
+
+<h2>Report Status</h2>
+
+<p><strong>Case ID:</strong> @Model.CaseId</p>
+<p><strong>Status:</strong> @Model.Status</p>
+<p><strong>Title:</strong> @Model.Title</p>
+<p><strong>Description:</strong> @Model.Description</p>
+
+<h3>Messages</h3>
+@if (!Model.Messages.Any())
+{
+    <p>No messages yet.</p>
+}
+else
+{
+    <ul class="list-group">
+        @foreach (var message in Model.Messages)
+        {
+            <li class="list-group-item">
+                <strong>@message.SenderType</strong> (@message.CreatedAt.ToString("u"))
+                <div>@message.Content</div>
+            </li>
+        }
+    </ul>
+}

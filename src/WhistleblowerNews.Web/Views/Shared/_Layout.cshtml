@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - WhistleblowerNews</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/WhistleblowerNews.Web.styles.css" asp-append-version="true" />
+</head>
+<body class="app-body">
+<div class="app-shell">
+    <header class="app-topbar">
+        <div class="brand">
+            <a class="brand-link" asp-area="" asp-controller="Home" asp-action="Index">WhistleblowerNews</a>
+            <span class="brand-tag">Secure reporting + newsroom operations</span>
+        </div>
+        <nav class="top-nav">
+            <a class="top-link" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
+            <a class="top-link" asp-area="Public" asp-controller="Articles" asp-action="Index">Articles</a>
+            <a class="top-link" asp-area="Whistleblower" asp-controller="Reports" asp-action="Create">Submit Report</a>
+            <a class="top-link" asp-area="Whistleblower" asp-controller="Reports" asp-action="Track">Track Report</a>
+        </nav>
+        <div class="user-panel">
+            @if (User.Identity?.IsAuthenticated ?? false)
+            {
+                <div class="user-meta">
+                    <span class="user-name">@User.Identity?.Name</span>
+                    <span class="role-badge">@User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value</span>
+                </div>
+                <form asp-area="" asp-controller="Account" asp-action="Logout" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">Logout</button>
+                </form>
+            }
+            else
+            {
+                <a class="btn btn-sm btn-outline-primary" asp-area="" asp-controller="Account" asp-action="Login">Login</a>
+            }
+        </div>
+    </header>
+
+    <div class="app-frame">
+        <aside class="app-sidebar">
+            <div class="nav-section">
+                <div class="nav-title">Public</div>
+                <a class="side-link" asp-area="Public" asp-controller="Articles" asp-action="Index">Articles</a>
+                <a class="side-link" asp-area="Whistleblower" asp-controller="Reports" asp-action="Create">Submit Report</a>
+                <a class="side-link" asp-area="Whistleblower" asp-controller="Reports" asp-action="Track">Track Report</a>
+            </div>
+
+            @if (User.Identity?.IsAuthenticated ?? false)
+            {
+                if (User.IsInRole("Subscriber"))
+                {
+                    <div class="nav-section">
+                        <div class="nav-title">Subscriber</div>
+                        <a class="side-link" asp-area="Subscriber" asp-controller="Comments" asp-action="Index">My Comments</a>
+                    </div>
+                }
+                if (User.IsInRole("Writer"))
+                {
+                    <div class="nav-section">
+                        <div class="nav-title">Writer</div>
+                        <a class="side-link" asp-area="Writer" asp-controller="Articles" asp-action="Index">My Articles</a>
+                        <a class="side-link" asp-area="Writer" asp-controller="Articles" asp-action="Create">New Article</a>
+                    </div>
+                }
+                if (User.IsInRole("Editor"))
+                {
+                    <div class="nav-section">
+                        <div class="nav-title">Editor</div>
+                        <a class="side-link" asp-area="Editor" asp-controller="Articles" asp-action="Index">All Articles</a>
+                        <a class="side-link" asp-area="Editor" asp-controller="Comments" asp-action="Index">All Comments</a>
+                    </div>
+                }
+                if (User.IsInRole("Investigator") || User.IsInRole("Editor"))
+                {
+                    <div class="nav-section">
+                        <div class="nav-title">Investigations</div>
+                        <a class="side-link" asp-area="Investigator" asp-controller="Reports" asp-action="Index">Assigned Reports</a>
+                    </div>
+                }
+            }
+        </aside>
+
+        <main class="app-content" role="main">
+            @await Html.PartialAsync("_Alerts")
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="app-footer">
+        <span>&copy; 2026 - WhistleblowerNews</span>
+        <span class="footer-note">Security-first newsroom workflows</span>
+    </footer>
+</div>
+
+<script src="~/js/site.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,101 @@
+@model WhistleblowerNews.Application.Reports.ReportDetailsDto
+@{
+    ViewData["Title"] = "Report Details";
+    var steps = new[] { "Open", "InReview", "WaitingForReporter", "Closed" };
+    var currentIndex = Array.IndexOf(steps, Model.Status);
+    if (currentIndex < 0)
+    {
+        currentIndex = 0;
+    }
+
+    var nextStatuses = Model.Status switch
+    {
+        "Open" => new[] { "InReview" },
+        "InReview" => new[] { "WaitingForReporter", "Closed" },
+        "WaitingForReporter" => new[] { "InReview", "Closed" },
+        _ => Array.Empty<string>()
+    };
+}
+
+<h2>Report @Model.CaseId</h2>
+<p><strong>Status:</strong> @Model.Status</p>
+<p><strong>Title:</strong> @Model.Title</p>
+<p><strong>Description:</strong> @Model.Description</p>
+
+<div class="status-timeline">
+    @for (var i = 0; i < steps.Length; i++)
+    {
+        var step = steps[i];
+        var css = i < currentIndex ? "status-step status-step--done" :
+            i == currentIndex ? "status-step status-step--active" :
+            "status-step";
+
+        <div class="@css">
+            <span class="status-dot"></span>
+            <span>@step</span>
+        </div>
+    }
+</div>
+
+<h3>Messages</h3>
+@if (!Model.Messages.Any())
+{
+    <p>No messages yet.</p>
+}
+else
+{
+    <ul class="list-group mb-3">
+        @foreach (var message in Model.Messages)
+        {
+            <li class="list-group-item">
+                <strong>@message.SenderType</strong> (@message.CreatedAt.ToString("u"))
+                <div class="message-body">@message.Content</div>
+            </li>
+        }
+    </ul>
+}
+
+<h3>Request More Info</h3>
+@if (Model.Status == "InReview")
+{
+    <form asp-action="RequestInfo" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="caseId" value="@Model.CaseId" />
+        <div class="mb-3">
+            <label class="form-label" for="request-info-content">Message to reporter</label>
+            <textarea id="request-info-content" name="content" class="form-control" rows="3" placeholder="Message to reporter"></textarea>
+        </div>
+        <button type="submit" class="btn btn-outline-primary">Send Request</button>
+    </form>
+}
+else if (Model.Status == "WaitingForReporter")
+{
+    <p class="text-muted">Awaiting reporter response.</p>
+}
+else if (Model.Status == "Closed")
+{
+    <p class="text-muted">Case closed. No further requests allowed.</p>
+}
+
+<h3 class="mt-4">Update Status</h3>
+@if (nextStatuses.Length == 0)
+{
+    <p class="text-muted">No further status changes allowed.</p>
+}
+else
+{
+    <form asp-action="UpdateStatus" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="caseId" value="@Model.CaseId" />
+        <div class="mb-3">
+            <label class="form-label" for="status-select">Next status</label>
+            <select id="status-select" name="Status" class="form-select">
+                @foreach (var status in nextStatuses)
+                {
+                    <option value="@status">@status</option>
+                }
+            </select>
+        </div>
+        <button type="submit" class="btn btn-outline-secondary">Update</button>
+    </form>
+}

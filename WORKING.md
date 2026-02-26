@@ -31,6 +31,18 @@ and add it to the solution so integration tests can be added in A3/A4.)
 
 Status / TODO (update as work completes)
 
+- [x] Updates completed (see below)
+- [x] Clean Architecture monolith conversion (Domain/Application/Infrastructure/Web)
+- [x] MVC + API in single host (areas + default routes)
+- [x] Cookie authentication (login/logout) with seeded demo users
+- [x] Role-based areas and views (Public/Subscriber/Writer/Editor/Investigator/Whistleblower)
+- [x] Whistleblower token header-only, CSRF on MVC forms
+- [x] Business logic moved to Application services
+- [x] Global error handling + ProblemDetails for API
+- [x] Security headers + health check endpoint
+- [x] Docs updated (architecture + auth flow)
+- [x] README updated for new paths and endpoints
+
 - [x] A0 Repo scaffolding (README + tests)
 - [x] A1 Domain entities + EF mappings (Articles/Comments)
 - [x] A2 Articles endpoints (public reads + writer/editor rules)
@@ -42,6 +54,62 @@ Status / TODO (update as work completes)
 - [x] B3 Investigator workflow + audit + tests
 
 Note: No Swagger/UI required. We will build our own UI separately.
+
+Updates completed (summary)
+- [x] Restructured solution into `/src` + `/tests` and removed old JWT-based host from the solution (legacy folder still present)
+- [x] Created projects: Domain, Application, Infrastructure, Web, Tests
+- [x] Moved domain models, EF Core context, migrations into new layers
+- [x] Added Application services (Auth, Articles, Comments, Reports) with business logic
+- [x] Moved authorization policies/handlers into Application layer
+- [x] Switched API routes to `/api/*` and updated controllers to use services
+- [x] Implemented cookie auth with `/Account/Login` + `/Account/Logout`
+- [x] Added MVC Areas and views:
+- [x] Public (list/view articles + comments)
+- [x] Subscriber (create/edit/delete own comments)
+- [x] Writer (CRUD own articles, delete comments on own articles)
+- [x] Editor (edit/delete any article/comment)
+- [x] Investigator (view assigned reports, request info, update status)
+- [x] Whistleblower (submit report, token shown once, track report)
+- [x] Enforced anti-forgery tokens on MVC forms
+- [x] Reporter token is header-only (`X-Reporter-Token`) in API and UI flow
+- [x] Added rate limiting policies for report submit + token access
+- [x] Added global exception handling with ProblemDetails for API
+- [x] Added security headers (HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, CSP)
+- [x] Added `/health` endpoint with DB connectivity check
+- [x] Updated docs with threat model, architecture diagram, cookie auth flow
+- [x] Updated README for new paths, cookie auth, `/api` routes, and examples
+- [x] Updated `.http` requests for cookie auth + `/api` paths
+- [x] Updated tests for cookie auth + `/api` routes; `dotnet test` passes
+- [x] OpenAPI disabled (no Swagger UI)
+
+Phase C updates (Security Maturity L2)
+- [x] Added Serilog console logging with correlation id + user context enrichment
+- [x] Added sensitive-data redaction policy (no Authorization/cookie/token/password properties)
+- [x] Implemented correlation ID middleware and response header `X-Correlation-ID`
+- [x] Added security event logging for 403/429 and deprecated token query usage
+- [x] Added audit service + expanded audit schema (event type, outcome, target, actor, correlation, IP, UA)
+- [x] Centralized audit helpers (Success/Denied/Failed) to standardize outcomes
+- [x] Audited: report status changes, request info, comment/article moderation, login success/failure
+- [x] Documented proxy-aware IP capture for audit entries
+- [x] Added audit tests + correlation id header test + rate limit audit test
+- [x] Tightened CSP to remove inline scripts; documented header tradeoffs
+- [x] New migration: `AuditLogEnhancements`
+- [x] C3 tests: report status audit, authorization denied audit, correlation id header, rate limit audit, login failure audit
+- [x] C4 headers: CSP tightened, no inline scripts, header rationale documented
+
+Phase D updates (UX Polish Level 2)
+- [x] Enterprise layout with top nav + sidebar
+- [x] Role-aware menu in shared layout
+- [x] Design system with CSS variables + consistent buttons/forms/tables
+- [x] Validation + alert styling with shared `_Alerts` partial
+- [x] Card components used on home dashboard
+- [x] D1 secure whistleblower UX: token shown once, warnings, no URL usage, no storage
+- [x] D2 public area polish: pagination, latest sorting, ads-free copy, safe rendering
+- [x] D3 subscriber UX: comment CRUD polish, filters, friendly validation
+- [x] D4 writer UX: CRUD polish, confirmation, comment moderation view
+- [x] D5 editor UX: global moderation filters + danger zone confirmations
+- [x] D6 investigator UX: status timeline + transition rules
+- [x] D7 accessibility + security UX: labels, focus styles, ARIA alerts, friendly error pages
 
 Assignment coverage checklist (ensure nothing is missed)
 

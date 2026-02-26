@@ -1,0 +1,26 @@
+@{
+    ViewData["Title"] = "Home";
+}
+
+<div class="card text-center mb-4">
+    <h1 class="display-4">Whistleblower News</h1>
+    <p class="lead">Secure reporting and role-based newsroom workflows.</p>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <h3>Public</h3>
+            <p>Browse published articles and read comments.</p>
+            <a class="btn btn-outline-primary" asp-area="Public" asp-controller="Articles" asp-action="Index">View Articles</a>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <h3>Whistleblower</h3>
+            <p>Submit an anonymous report or track an existing case.</p>
+            <a class="btn btn-outline-warning" asp-area="Whistleblower" asp-controller="Reports" asp-action="Create">Submit Report</a>
+            <a class="btn btn-outline-secondary" asp-area="Whistleblower" asp-controller="Reports" asp-action="Track">Track Report</a>
+        </div>
+    </div>
+</div>

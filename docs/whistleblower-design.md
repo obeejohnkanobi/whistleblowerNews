@@ -12,9 +12,10 @@
 - No reporter identity is collected or stored by default.
 - Reporter access tokens are high-entropy and stored only as salted hashes.
 - Token verification uses constant-time comparison.
-- Reporter token is sent via header `X-Reporter-Token` (query token is deprecated).
+- Reporter token is sent via header `X-Reporter-Token` only.
 - Rate limiting is applied to report submission and reporter token endpoints.
 - Least-privilege access control for investigators and editors.
+- Staff authentication uses HttpOnly cookies with role claims.
 - Investigator actions require assignment checks.
 - Audit trail records case actions and actors.
 - Data at rest is stored in a database with enforced relationships.
@@ -40,7 +41,7 @@
 
 | Threat | Impact | Mitigation | Residual Risk |
 | ------ | ------ | ---------- | ------------- |
-| Token leakage via URLs/logs | Unauthorized report access | Header-based token transport, no token logging, query token deprecated | Token could still be phished or shared |
+| Token leakage via URLs/logs | Unauthorized report access | Header-based token transport, no token logging, no token in URLs | Token could still be phished or shared |
 | Token brute force / enumeration | Unauthorized access | High-entropy tokens, hashed storage, rate limiting on token endpoint | Distributed attacks may still probe |
 | Investigator abuse / overreach | Unauthorized case changes | Role policies + assignment checks + audit log | Insider risk remains, needs monitoring |
 | SQL injection | Data compromise | EF Core parameterization, no raw SQL endpoints | Misuse of raw SQL in future changes |
@@ -49,6 +50,9 @@
 
 ## Audit logging
 The audit log is append-only; the API exposes no update/delete endpoints for audit entries.
+Audit entries are only inserted by the audit service (no update/delete logic in code).
+IP address is captured from `HttpContext.Connection.RemoteIpAddress`; in production behind proxies,
+enable forwarded headers to record the original client IP.
 
 ## PoC limitations / production hardening
 - Rate limit tuning and WAF integration for real-world traffic patterns.
@@ -56,6 +60,17 @@ The audit log is append-only; the API exposes no update/delete endpoints for aud
 - Secret storage hardening (rotation, HSM/KMS-backed secrets if applicable).
 - Monitoring and alerting for abnormal access patterns and investigator actions.
 - Optional secure message channel and metadata minimization for reporters.
+
+## HTTP security headers
+- HSTS is enabled outside Development to enforce HTTPS.
+- CSP restricts scripts and styles to self-hosted assets (no inline scripts) and blocks
+  embedded objects (`object-src 'none'`), external form posts (`form-action 'self'`),
+  and clickjacking (`frame-ancestors 'none'`).
+- Referrer-Policy set to `strict-origin-when-cross-origin` to reduce leakage.
+- Frame embedding blocked via CSP `frame-ancestors 'none'` and X-Frame-Options for legacy clients.
+
+Tradeoff: inline scripts are disallowed. If a future UI requires inline scripts,
+prefer moving them to static files or using CSP nonces.
 
 ## Sequence diagram (reporter flow)
 ```mermaid
@@ -65,17 +80,17 @@ sequenceDiagram
     participant DB
     participant Investigator
 
-    Reporter->>API: POST /reports (title, description)
+    Reporter->>API: POST /api/reports (title, description)
     API->>DB: Create Report + ReporterSecret(hash)
     DB-->>API: CaseId
     API-->>Reporter: CaseId + reporterToken (one-time)
 
-    Reporter->>API: GET /reports/{caseId} (X-Reporter-Token header)
+    Reporter->>API: GET /api/reports/{caseId} (X-Reporter-Token header)
     API->>DB: Verify token hash + load report/messages
     DB-->>API: Report status + messages
     API-->>Reporter: Status + messages
 
-    Investigator->>API: POST /reports/{caseId}/request-info
+    Investigator->>API: POST /api/reports/{caseId}/request-info
     API->>DB: Check assignment + store message + audit
     API-->>Reporter: (reporter fetches updates)
 ```
@@ -87,11 +102,38 @@ graph TD
     Investigator[Investigator] --> API
     Editor[Editor] --> API
 
-    API --> Auth[JWT Auth + Policies]
+    API --> Auth[Cookie Auth + Policies]
     API --> DB[(Database)]
     DB --> Reports[Reports]
     DB --> Secrets[ReporterSecret (hashed)]
     DB --> Messages[ReportMessages]
     DB --> Assignments[InvestigatorAssignments]
     DB --> Audit[AuditLog]
+```
+
+## Architecture (Clean Architecture)
+```mermaid
+graph TD
+    Web[WhistleblowerNews.Web<br/>MVC + API] --> Application[WhistleblowerNews.Application]
+    Web --> Infrastructure[WhistleblowerNews.Infrastructure]
+    Application --> Domain[WhistleblowerNews.Domain]
+    Infrastructure --> Domain
+    Infrastructure --> Application
+```
+
+## Auth flow (cookie)
+```mermaid
+sequenceDiagram
+    actor User
+    participant UI as MVC UI
+    participant API
+    participant DB
+
+    User->>UI: POST /Account/Login (username, password)
+    UI->>DB: Validate credentials
+    DB-->>UI: User + role
+    UI-->>User: Set auth cookie
+
+    User->>API: GET /api/auth/me (cookie)
+    API-->>User: 200 (username, role)
 ```

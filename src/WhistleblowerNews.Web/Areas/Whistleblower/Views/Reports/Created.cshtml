@@ -1,0 +1,18 @@
+@model WhistleblowerNews.Application.Reports.CreateReportResponse
+@{
+    ViewData["Title"] = "Report Submitted";
+}
+
+<h2>Report Submitted</h2>
+
+<p>Your report was created successfully. Save the token below. It will not be shown again.</p>
+
+<div class="alert alert-warning" role="status" aria-live="polite" aria-atomic="true">
+    <strong>Case ID:</strong> @Model.CaseId<br />
+    <strong>Reporter Token:</strong> @Model.ReporterToken
+</div>
+
+<p><strong>Keep your token safe; it cannot be recovered.</strong></p>
+<p>Use this token to track your report in the follow-up page. Do not share it or place it in a URL.</p>
+
+<a class="btn btn-outline-primary" asp-action="Track">Track Report</a>

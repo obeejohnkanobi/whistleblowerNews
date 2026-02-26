@@ -20,14 +20,18 @@ using WhistleblowerNews.Web.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddHttpContextAccessor();
+
 builder.Host.UseSerilog((context, services, config) =>
 {
+    var http = services.GetService<IHttpContextAccessor>() ?? new HttpContextAccessor();
+
     config.MinimumLevel.Information()
         .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
         .Enrich.FromLogContext()
         .Enrich.WithProperty("ApplicationName", "WhistleblowerNews")
         .Enrich.WithProperty("Environment", context.HostingEnvironment.EnvironmentName)
-        .Enrich.With(new UserContextEnricher(services.GetRequiredService<IHttpContextAccessor>()))
+        .Enrich.With(new UserContextEnricher(http))
         .Enrich.With(new SensitiveDataEnricher())
         .WriteTo.Console();
 });
@@ -44,8 +48,6 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(connectionString));
 
 builder.Services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
-builder.Services.AddHttpContextAccessor();
-
 builder.Services.AddControllersWithViews();
 
 builder.Services.AddProblemDetails(options =>

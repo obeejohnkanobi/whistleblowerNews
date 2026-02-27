@@ -25,7 +25,11 @@ public sealed class TestWebApplicationFactory : WebApplicationFactory<Program>
                 ["RateLimiting:ReporterToken:PermitLimit"] = "1000",
                 ["RateLimiting:ReporterToken:WindowSeconds"] = "10",
                 ["RateLimiting:ReportSubmit:PermitLimit"] = "1000",
-                ["RateLimiting:ReportSubmit:WindowSeconds"] = "60"
+                ["RateLimiting:ReportSubmit:WindowSeconds"] = "60",
+                ["RateLimiting:AuthLogin:PermitLimit"] = "1000",
+                ["RateLimiting:AuthLogin:WindowSeconds"] = "60",
+                ["RateLimiting:AuthRegister:PermitLimit"] = "1000",
+                ["RateLimiting:AuthRegister:WindowSeconds"] = "60"
             };
 
             config.AddInMemoryCollection(settings);
@@ -52,6 +56,11 @@ public sealed class TestWebApplicationFactory : WebApplicationFactory<Program>
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             db.Database.EnsureCreated();
         });
+    }
+
+    protected override void ConfigureClient(HttpClient client)
+    {
+        client.BaseAddress = new Uri("https://localhost");
     }
 }
 

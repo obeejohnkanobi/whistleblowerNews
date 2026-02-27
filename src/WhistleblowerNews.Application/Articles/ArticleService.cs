@@ -33,7 +33,7 @@ public sealed class ArticleService
                 a.Title,
                 a.Content,
                 a.AuthorId,
-                a.Author.Username,
+                a.Author.UserName ?? string.Empty,
                 a.CreatedAt))
             .ToListAsync(ct);
     }
@@ -53,7 +53,7 @@ public sealed class ArticleService
             article.Title,
             article.Content,
             article.AuthorId,
-            article.Author.Username,
+            article.Author.UserName ?? string.Empty,
             article.CreatedAt);
     }
 
@@ -84,7 +84,7 @@ public sealed class ArticleService
             article.Title,
             article.Content,
             article.AuthorId,
-            author.Username,
+            author.UserName ?? string.Empty,
             article.CreatedAt);
 
         return ServiceResult<ArticleDto>.Created(dto);
@@ -127,7 +127,7 @@ public sealed class ArticleService
             article.Title,
             article.Content,
             article.AuthorId,
-            article.Author.Username,
+            article.Author.UserName ?? string.Empty,
             article.CreatedAt);
 
         return ServiceResult<ArticleDto>.Ok(dto);
@@ -173,7 +173,7 @@ public sealed class ArticleService
                 a.Title,
                 a.Content,
                 a.AuthorId,
-                a.Author.Username,
+                a.Author.UserName ?? string.Empty,
                 a.CreatedAt))
             .ToListAsync(ct);
     }

@@ -1,0 +1,10 @@
+@{
+    ViewData["Title"] = "Check your email";
+    var email = ViewData["Email"] as string;
+}
+
+<h2>Confirm your email</h2>
+<p class="text-muted">
+    We sent a confirmation link to <strong>@email</strong>.
+    Open the email file in <code>logs/dev-emails.log</code> to confirm your account.
+</p>

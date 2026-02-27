@@ -1,11 +1,10 @@
 using System.Security.Claims;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using WhistleblowerNews.Application.Auditing;
 using WhistleblowerNews.Application.Authentication;
-using WhistleblowerNews.Application.Common;
 using WhistleblowerNews.Domain;
 using WhistleblowerNews.Web.Infrastructure;
 
@@ -15,64 +14,91 @@ namespace WhistleblowerNews.Web.Controllers.Api;
 [Route("api/auth")]
 public sealed class AuthController : ControllerBase
 {
-    private readonly AuthService _auth;
+    private readonly UserManager<User> _userManager;
+    private readonly SignInManager<User> _signInManager;
     private readonly IAuditService _audit;
     private readonly ILogger<AuthController> _logger;
 
-    public AuthController(AuthService auth, IAuditService audit, ILogger<AuthController> logger)
+    public AuthController(
+        UserManager<User> userManager,
+        SignInManager<User> signInManager,
+        IAuditService audit,
+        ILogger<AuthController> logger)
     {
-        _auth = auth;
+        _userManager = userManager;
+        _signInManager = signInManager;
         _audit = audit;
         _logger = logger;
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("auth-login-policy")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken ct)
     {
-        var result = await _auth.ValidateCredentialsAsync(request.Username, request.Password, ct);
-        if (result.Status == ResultStatus.BadRequest)
-            return BadRequest(result.Error);
+        if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
+            return BadRequest("Username and password are required.");
 
-        if (result.Status == ResultStatus.Unauthorized)
+        var signInResult = await _signInManager.PasswordSignInAsync(
+            request.Username,
+            request.Password,
+            isPersistent: false,
+            lockoutOnFailure: true);
+
+        if (signInResult.Succeeded)
         {
-            _logger.LogWarning("Login failed for {Username}", request.Username);
-            var auditContext = AuditContextFactory.FromHttpContext(HttpContext);
-            var targetId = string.IsNullOrWhiteSpace(request.Username) ? "unknown" : request.Username;
-            await _audit.Failed(
-                AuditEventType.LoginFailed,
+            var user = await _userManager.FindByNameAsync(request.Username);
+            if (user is null)
+                return Unauthorized();
+
+            var roles = await _userManager.GetRolesAsync(user);
+            var role = roles.FirstOrDefault();
+
+            _logger.LogInformation("Login succeeded for {UserId}", user.Id);
+            var successContext = AuditContextFactory.FromHttpContext(HttpContext) with
+            {
+                ActorUserId = user.Id,
+                ActorRole = role
+            };
+            await _audit.Success(
+                AuditEventType.LoginSucceeded,
                 "User",
-                targetId,
+                user.Id.ToString(),
                 null,
-                auditContext,
+                successContext,
                 ct);
 
-            return Unauthorized();
+            return Ok(new { username = user.UserName, role });
         }
 
-        var user = result.Value!;
-        await SignInAsync(user);
-
-        _logger.LogInformation("Login succeeded for {UserId}", user.Id);
-        var successContext = AuditContextFactory.FromHttpContext(HttpContext) with
+        if (signInResult.IsLockedOut)
         {
-            ActorUserId = user.Id,
-            ActorRole = user.Role.ToString()
-        };
-        await _audit.Success(
-            AuditEventType.LoginSucceeded,
+            _logger.LogWarning("Login locked out for {Username}", request.Username);
+            return StatusCode(StatusCodes.Status423Locked);
+        }
+
+        if (signInResult.IsNotAllowed)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, "Email not confirmed.");
+        }
+
+        _logger.LogWarning("Login failed for {Username}", request.Username);
+        var auditContext = AuditContextFactory.FromHttpContext(HttpContext);
+        var targetId = string.IsNullOrWhiteSpace(request.Username) ? "unknown" : request.Username;
+        await _audit.Failed(
+            AuditEventType.LoginFailed,
             "User",
-            user.Id.ToString(),
+            targetId,
             null,
-            successContext,
+            auditContext,
             ct);
 
-        return Ok(new { username = user.Username, role = user.Role.ToString() });
+        return Unauthorized();
     }
 
     [HttpPost("logout")]
     public async Task<IActionResult> Logout()
     {
-        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        await _signInManager.SignOutAsync();
         return Ok();
     }
 
@@ -85,26 +111,5 @@ public sealed class AuthController : ControllerBase
             Username = User.Identity?.Name,
             Role = User.FindFirst(ClaimTypes.Role)?.Value
         });
-    }
-
-    private async Task SignInAsync(User user)
-    {
-        var claims = new List<Claim>
-        {
-            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new(ClaimTypes.Name, user.Username),
-            new(ClaimTypes.Role, user.Role.ToString())
-        };
-
-        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-        var principal = new ClaimsPrincipal(identity);
-
-        await HttpContext.SignInAsync(
-            CookieAuthenticationDefaults.AuthenticationScheme,
-            principal,
-            new AuthenticationProperties
-            {
-                IsPersistent = false
-            });
     }
 }

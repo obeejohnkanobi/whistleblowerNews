@@ -88,13 +88,13 @@ public sealed class UiRegressionTests : IClassFixture<TestWebApplicationFactory>
 
     private async Task<HttpClient> CreateAuthenticatedClient(UserRole role, bool allowRedirect = false)
     {
-        var password = "password";
+        var password = "password1";
         var user = await TestData.CreateUserAsync(_factory, role, null, password);
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = allowRedirect });
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/login",
-            new LoginRequest(user.Username, password));
+            new LoginRequest(user.UserName ?? string.Empty, password));
 
         response.EnsureSuccessStatusCode();
         return client;
@@ -102,12 +102,12 @@ public sealed class UiRegressionTests : IClassFixture<TestWebApplicationFactory>
 
     private async Task<HttpClient> CreateAuthenticatedClient(User user, bool allowRedirect = false)
     {
-        var password = "password";
+        var password = "password1";
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = allowRedirect });
 
         var response = await client.PostAsJsonAsync(
             "/api/auth/login",
-            new LoginRequest(user.Username, password));
+            new LoginRequest(user.UserName ?? string.Empty, password));
 
         response.EnsureSuccessStatusCode();
         return client;

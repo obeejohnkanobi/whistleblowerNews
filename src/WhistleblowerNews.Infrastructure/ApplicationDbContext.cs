@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using WhistleblowerNews.Application.Abstractions;
 using WhistleblowerNews.Domain;
@@ -8,9 +10,8 @@ namespace WhistleblowerNews.Infrastructure;
 /// EF Core database context (Unit of Work).
 /// This maps our Domain entities to SQLite tables.
 /// </summary>
-public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
+public sealed class ApplicationDbContext : IdentityDbContext<User, IdentityRole<int>, int>, IApplicationDbContext
 {
-    public DbSet<User> Users => Set<User>();
     public DbSet<Article> Articles => Set<Article>();
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<Report> Reports => Set<Report>();
@@ -28,10 +29,34 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        // User
+        // Identity tables
+        modelBuilder.Entity<User>().ToTable("Users");
+        modelBuilder.Entity<IdentityRole<int>>().ToTable("Roles");
+        modelBuilder.Entity<IdentityUserRole<int>>().ToTable("UserRoles");
+        modelBuilder.Entity<IdentityUserClaim<int>>().ToTable("UserClaims");
+        modelBuilder.Entity<IdentityUserLogin<int>>().ToTable("UserLogins");
+        modelBuilder.Entity<IdentityRoleClaim<int>>().ToTable("RoleClaims");
+        modelBuilder.Entity<IdentityUserToken<int>>().ToTable("UserTokens");
+
         modelBuilder.Entity<User>()
-            .HasIndex(u => u.Username)
-            .IsUnique();
+            .Property(u => u.UserName)
+            .HasColumnName("Username");
+
+        modelBuilder.Entity<User>()
+            .Property(u => u.NormalizedUserName)
+            .HasColumnName("NormalizedUsername");
+
+        modelBuilder.Entity<User>()
+            .Property(u => u.Email)
+            .HasColumnName("Email");
+
+        modelBuilder.Entity<User>()
+            .Property(u => u.NormalizedEmail)
+            .HasColumnName("NormalizedEmail");
+
+        modelBuilder.Entity<User>()
+            .Property(u => u.PasswordHash)
+            .HasColumnName("PasswordHash");
 
         // Article -> Author (User)
         modelBuilder.Entity<Article>()
@@ -145,10 +170,6 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
             .Property(a => a.UserAgent)
             .HasMaxLength(256);
 
-        // Enum mapping (store as text for readability)
-        modelBuilder.Entity<User>()
-            .Property(u => u.Role)
-            .HasConversion<string>();
     }
 }
 

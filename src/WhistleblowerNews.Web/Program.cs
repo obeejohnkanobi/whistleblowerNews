@@ -5,17 +5,18 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 using Serilog;
 using Serilog.Events;
 using WhistleblowerNews.Application.Abstractions;
 using WhistleblowerNews.Application.Auditing;
-using WhistleblowerNews.Application.Authentication;
 using WhistleblowerNews.Application.Authorization;
 using WhistleblowerNews.Application.Articles;
 using WhistleblowerNews.Application.Comments;
 using WhistleblowerNews.Application.Reports;
 using WhistleblowerNews.Domain;
 using WhistleblowerNews.Infrastructure;
+using WhistleblowerNews.Web.Infrastructure.Email;
 using WhistleblowerNews.Web.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -100,47 +101,98 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0
             });
     });
+
+    options.AddPolicy("auth-login-policy", context =>
+    {
+        var config = context.RequestServices.GetRequiredService<IConfiguration>();
+        var permitLimit = config.GetValue("RateLimiting:AuthLogin:PermitLimit", 10);
+        var windowSeconds = config.GetValue("RateLimiting:AuthLogin:WindowSeconds", 60);
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = permitLimit,
+                Window = TimeSpan.FromSeconds(windowSeconds),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            });
+    });
+
+    options.AddPolicy("auth-register-policy", context =>
+    {
+        var config = context.RequestServices.GetRequiredService<IConfiguration>();
+        var permitLimit = config.GetValue("RateLimiting:AuthRegister:PermitLimit", 5);
+        var windowSeconds = config.GetValue("RateLimiting:AuthRegister:WindowSeconds", 60);
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = permitLimit,
+                Window = TimeSpan.FromSeconds(windowSeconds),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            });
+    });
 });
 
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(options =>
+builder.Services.AddIdentity<User, IdentityRole<int>>(options =>
     {
-        options.LoginPath = "/Account/Login";
-        options.AccessDeniedPath = "/Account/AccessDenied";
-        options.SlidingExpiration = true;
-        options.Cookie.Name = "WhistleblowerNews.Auth";
-        options.Cookie.HttpOnly = true;
-        options.Cookie.SameSite = SameSiteMode.Lax;
-        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing")
-            ? CookieSecurePolicy.SameAsRequest
-            : CookieSecurePolicy.Always;
+        options.Password.RequiredLength = 8;
+        options.Password.RequireDigit = true;
+        options.Password.RequireUppercase = false;
+        options.Password.RequireLowercase = true;
+        options.Password.RequireNonAlphanumeric = false;
 
-        options.Events = new CookieAuthenticationEvents
+        options.Lockout.AllowedForNewUsers = true;
+        options.Lockout.MaxFailedAccessAttempts = 5;
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(10);
+
+        options.User.RequireUniqueEmail = true;
+        options.SignIn.RequireConfirmedEmail = true;
+    })
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddDefaultTokenProviders();
+
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.LoginPath = "/Account/Login";
+    options.AccessDeniedPath = "/Account/AccessDenied";
+    options.SlidingExpiration = true;
+    options.Cookie.Name = "WhistleblowerNews.Auth";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing")
+        ? CookieSecurePolicy.SameAsRequest
+        : CookieSecurePolicy.Always;
+
+    options.Events = new CookieAuthenticationEvents
+    {
+        OnRedirectToLogin = context =>
         {
-            OnRedirectToLogin = context =>
+            if (context.Request.Path.StartsWithSegments("/api"))
             {
-                if (context.Request.Path.StartsWithSegments("/api"))
-                {
-                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                    return Task.CompletedTask;
-                }
-
-                context.Response.Redirect(context.RedirectUri);
-                return Task.CompletedTask;
-            },
-            OnRedirectToAccessDenied = context =>
-            {
-                if (context.Request.Path.StartsWithSegments("/api"))
-                {
-                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                    return Task.CompletedTask;
-                }
-
-                context.Response.Redirect(context.RedirectUri);
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 return Task.CompletedTask;
             }
-        };
-    });
+
+            context.Response.Redirect(context.RedirectUri);
+            return Task.CompletedTask;
+        },
+        OnRedirectToAccessDenied = context =>
+        {
+            if (context.Request.Path.StartsWithSegments("/api"))
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                return Task.CompletedTask;
+            }
+
+            context.Response.Redirect(context.RedirectUri);
+            return Task.CompletedTask;
+        }
+    };
+});
 
 builder.Services.AddAuthorization(options =>
 {
@@ -173,8 +225,9 @@ builder.Services.AddSingleton<IAuthorizationHandler, WriterOwnsArticleHandler>()
 builder.Services.AddScoped<ArticleService>();
 builder.Services.AddScoped<CommentService>();
 builder.Services.AddScoped<ReportService>();
-builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
+builder.Services.Configure<FileEmailSenderOptions>(builder.Configuration.GetSection("Email"));
+builder.Services.AddSingleton<IEmailSender, FileEmailSender>();
 
 builder.Services.AddHealthChecks()
     .AddCheck<DbHealthCheck>("db");
@@ -233,7 +286,22 @@ app.UseExceptionHandler(errorApp =>
 if (!app.Environment.IsDevelopment())
     app.UseHsts();
 
-app.UseHttpsRedirection();
+app.UseWhen(
+    context => context.Request.Path.StartsWithSegments("/api"),
+    branch => branch.Use(async (context, next) =>
+    {
+        if (!context.Request.IsHttps && !app.Environment.IsEnvironment("Testing"))
+        {
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            return;
+        }
+
+        await next();
+    }));
+
+app.UseWhen(
+    context => !context.Request.Path.StartsWithSegments("/api"),
+    branch => branch.UseHttpsRedirection());
 
 app.Use(async (context, next) =>
 {
@@ -272,7 +340,9 @@ if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    await DatabaseSeeder.SeedAsync(db);
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<int>>>();
+    await DatabaseSeeder.SeedAsync(db, userManager, roleManager);
 }
 
 app.MapHealthChecks("/health");

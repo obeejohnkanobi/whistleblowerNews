@@ -1,0 +1,8 @@
+@{
+    ViewData["Title"] = "Email confirmed";
+    var message = ViewData["StatusMessage"] as string;
+}
+
+<h2>Email confirmation</h2>
+<p class="text-muted">@message</p>
+<a class="btn btn-outline-primary" asp-controller="Account" asp-action="Login">Go to login</a>

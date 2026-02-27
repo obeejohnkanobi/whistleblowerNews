@@ -53,7 +53,7 @@ public sealed class AuthTests : IClassFixture<TestWebApplicationFactory>
     public async Task Login_InvalidPassword_ReturnsUnauthorized()
     {
         var username = UniqueUsername("writer");
-        await TestData.CreateUserAsync(_factory, UserRole.Writer, username, "correct-password");
+        await TestData.CreateUserAsync(_factory, UserRole.Writer, username, "correct-password1");
 
         var response = await _client.PostAsJsonAsync(
             "/api/auth/login",
@@ -87,11 +87,11 @@ public sealed class AuthTests : IClassFixture<TestWebApplicationFactory>
     public async Task Login_ValidUser_SetsCookie()
     {
         var username = UniqueUsername("writer");
-        await TestData.CreateUserAsync(_factory, UserRole.Writer, username, "writer-password");
+        await TestData.CreateUserAsync(_factory, UserRole.Writer, username, "writer-password1");
 
         var response = await _client.PostAsJsonAsync(
             "/api/auth/login",
-            new LoginRequest(username, "writer-password"));
+            new LoginRequest(username, "writer-password1"));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.True(response.Headers.Contains("Set-Cookie"));
@@ -101,11 +101,11 @@ public sealed class AuthTests : IClassFixture<TestWebApplicationFactory>
     public async Task Me_WithValidLogin_ReturnsUserInfo()
     {
         var username = UniqueUsername("editor");
-        await TestData.CreateUserAsync(_factory, UserRole.Editor, username, "editor-password");
+        await TestData.CreateUserAsync(_factory, UserRole.Editor, username, "editor-password1");
 
         var loginResponse = await _client.PostAsJsonAsync(
             "/api/auth/login",
-            new LoginRequest(username, "editor-password"));
+            new LoginRequest(username, "editor-password1"));
 
         Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
 

@@ -40,7 +40,7 @@ public sealed class CommentService
                 c.Content,
                 c.ArticleId,
                 c.UserId,
-                c.User.Username,
+                c.User.UserName ?? string.Empty,
                 c.CreatedAt))
             .ToListAsync(ct);
 
@@ -59,7 +59,7 @@ public sealed class CommentService
                 c.Content,
                 c.ArticleId,
                 c.UserId,
-                c.User.Username,
+                c.User.UserName ?? string.Empty,
                 c.CreatedAt))
             .ToListAsync(ct);
     }
@@ -75,7 +75,7 @@ public sealed class CommentService
                 c.Content,
                 c.ArticleId,
                 c.UserId,
-                c.User.Username,
+                c.User.UserName ?? string.Empty,
                 c.CreatedAt))
             .ToListAsync(ct);
     }
@@ -95,7 +95,7 @@ public sealed class CommentService
             comment.Content,
             comment.ArticleId,
             comment.UserId,
-            comment.User.Username,
+            comment.User.UserName ?? string.Empty,
             comment.CreatedAt);
     }
 
@@ -131,7 +131,7 @@ public sealed class CommentService
             comment.Content,
             comment.ArticleId,
             comment.UserId,
-            author.Username,
+            author.UserName ?? string.Empty,
             comment.CreatedAt);
 
         return ServiceResult<CommentDto>.Created(dto);
@@ -174,7 +174,7 @@ public sealed class CommentService
             comment.Content,
             comment.ArticleId,
             comment.UserId,
-            comment.User.Username,
+            comment.User.UserName ?? string.Empty,
             comment.CreatedAt);
 
         return ServiceResult<CommentDto>.Ok(dto);

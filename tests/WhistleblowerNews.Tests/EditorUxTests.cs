@@ -42,12 +42,12 @@ public sealed class EditorUxTests : IClassFixture<TestWebApplicationFactory>
 
         var (_, editorClient) = await TestData.CreateUserWithClientAsync(_factory, UserRole.Editor);
 
-        var response = await editorClient.GetAsync($"/Editor/Comments?username={subscriberA.Username}");
+        var response = await editorClient.GetAsync($"/Editor/Comments?username={subscriberA.UserName ?? string.Empty}");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var html = await response.Content.ReadAsStringAsync();
-        Assert.Contains(subscriberA.Username, html);
-        Assert.DoesNotContain(subscriberB.Username, html);
+        Assert.Contains(subscriberA.UserName ?? string.Empty, html);
+        Assert.DoesNotContain(subscriberB.UserName ?? string.Empty, html);
     }
 
     [Fact]

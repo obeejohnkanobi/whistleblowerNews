@@ -1,5 +1,5 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using WhistleblowerNews.Application.Services;
 using WhistleblowerNews.Domain;
 
 namespace WhistleblowerNews.Infrastructure;
@@ -10,39 +10,52 @@ namespace WhistleblowerNews.Infrastructure;
 /// </summary>
 public static class DatabaseSeeder
 {
-    public static async Task SeedAsync(ApplicationDbContext db, CancellationToken ct = default)
+    public static async Task SeedAsync(
+        ApplicationDbContext db,
+        UserManager<User> userManager,
+        RoleManager<IdentityRole<int>> roleManager,
+        CancellationToken ct = default)
     {
         // Ensure schema is up to date (applies migrations)
         await db.Database.MigrateAsync(ct);
 
         // If we already have users, do nothing (idempotent seed).
-        if (await db.Users.AnyAsync(ct))
+        if (await userManager.Users.AnyAsync(ct))
             return;
+
+        // Ensure roles exist
+        foreach (var role in Enum.GetNames<UserRole>())
+        {
+            if (!await roleManager.RoleExistsAsync(role))
+                await roleManager.CreateAsync(new IdentityRole<int>(role));
+        }
 
         // Create deterministic demo users (for teacher demos and tests)
         // NOTE: Passwords are simple on purpose (demo). We'll improve later.
-        var users = new List<User>
-        {
-            CreateUser("subscriber", "subscriber123", UserRole.Subscriber),
-            CreateUser("writer", "writer123", UserRole.Writer),
-            CreateUser("editor", "editor123", UserRole.Editor),
-            CreateUser("investigator", "investigator123", UserRole.Investigator)
-        };
-
-        await db.Users.AddRangeAsync(users, ct);
-        await db.SaveChangesAsync(ct);
+        await CreateUserAsync(userManager, "subscriber", "subscriber123", UserRole.Subscriber);
+        await CreateUserAsync(userManager, "writer", "writer123", UserRole.Writer);
+        await CreateUserAsync(userManager, "editor", "editor123", UserRole.Editor);
+        await CreateUserAsync(userManager, "investigator", "investigator123", UserRole.Investigator);
     }
 
-    private static User CreateUser(string username, string plainPassword, UserRole role)
+    private static async Task CreateUserAsync(
+        UserManager<User> userManager,
+        string username,
+        string plainPassword,
+        UserRole role)
     {
-        var salt = PasswordHasher.GenerateSalt();
-        var hash = PasswordHasher.HashPassword(plainPassword, salt);
+        var user = new User
+        {
+            UserName = username,
+            Email = $"{username}@example.local",
+            EmailConfirmed = true,
+            LockoutEnabled = true
+        };
+        var result = await userManager.CreateAsync(user, plainPassword);
+        if (!result.Succeeded)
+            return;
 
-        // Store salt + hash together (simple format for demo)
-        // In production: separate columns or use Identity.
-        var passwordHash = $"{salt}${hash}";
-
-        return new User(username, passwordHash, role);
+        await userManager.AddToRoleAsync(user, role.ToString());
     }
 }
 

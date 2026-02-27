@@ -13,7 +13,8 @@ Backend proof-of-concept for two assignments:
 # from repo root
 dotnet run --project src/WhistleblowerNews.Web --launch-profile https
 ```
-The app runs on https://localhost:7080 and http://localhost:5048 by default (see `src/WhistleblowerNews.Web/Properties/launchSettings.json`).
+The app runs on https://localhost:7080 only (see `src/WhistleblowerNews.Web/Properties/launchSettings.json`).
+If your client complains about the dev certificate, trust it or use `-k` with curl for local testing.
 
 ## Database and migrations
 - SQLite file: `src/WhistleblowerNews.Web/whistleblowerNews.db`
@@ -33,6 +34,11 @@ dotnet ef database update --project src/WhistleblowerNews.Infrastructure --start
 ## Authentication
 - Cookie-based authentication (MVC login page at `/Account/Login`)
 - API login endpoint `/api/auth/login` sets the auth cookie
+- Subscriber sign-up at `/Account/Register`
+- Password policy: min 8 chars, at least one digit; lockout after 5 failed attempts (10 minutes)
+- Email confirmation is required before login.
+- Password reset at `/Account/ForgotPassword` and `/Account/ResetPassword`.
+- Dev emails are written to `logs/dev-emails.log`.
 
 ## HTTP examples
 See `src/WhistleblowerNews.Web/whistleblowerNews.http` for sample requests.
@@ -40,12 +46,12 @@ See `src/WhistleblowerNews.Web/whistleblowerNews.http` for sample requests.
 ### API login example
 ```bash
 # login and store cookie
-curl -c cookies.txt -X POST http://localhost:5048/api/auth/login \
+curl -c cookies.txt -X POST https://localhost:7080/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"writer","password":"writer123"}'
 
 # call a protected endpoint with the cookie
-curl -b cookies.txt http://localhost:5048/api/auth/me
+curl -b cookies.txt https://localhost:7080/api/auth/me
 ```
 
 ## News site endpoints (Assignment 2)
@@ -74,12 +80,12 @@ Reporter token transport: use the `X-Reporter-Token` header. Tokens are not acce
 ### Whistleblower curl examples
 ```bash
 # Create report (anonymous)
-curl -X POST http://localhost:5048/api/reports \
+curl -X POST https://localhost:7080/api/reports \
   -H "Content-Type: application/json" \
   -d '{"title":"Unsafe behavior","description":"Details"}'
 
 # Follow report (anonymous, header token)
-curl http://localhost:5048/api/reports/YOUR_CASE_ID \
+curl https://localhost:7080/api/reports/YOUR_CASE_ID \
   -H "X-Reporter-Token: YOUR_REPORTER_TOKEN"
 ```
 

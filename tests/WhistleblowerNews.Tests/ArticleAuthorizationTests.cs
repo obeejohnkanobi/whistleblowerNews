@@ -99,4 +99,102 @@ public sealed class ArticleAuthorizationTests : IClassFixture<TestWebApplication
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
+
+    [Fact]
+    public async Task GetArticleById_ReturnsArticle()
+    {
+        var (writer, _) = await TestData.CreateUserWithClientAsync(_factory, UserRole.Writer);
+        var article = await TestData.CreateArticleAsync(_factory, writer.Id, "Specific Title");
+
+        var client = _factory.CreateClient();
+        var response = await client.GetAsync($"/api/articles/{article.Id}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetArticleById_NonExistent_ReturnsNotFound()
+    {
+        var client = _factory.CreateClient();
+        var response = await client.GetAsync("/api/articles/999999");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Editor_CannotCreateArticle()
+    {
+        var (_, editorClient) = await TestData.CreateUserWithClientAsync(_factory, UserRole.Editor);
+
+        var response = await editorClient.PostAsJsonAsync(
+            "/api/articles",
+            new CreateArticleRequest("Title", "Content"));
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Subscriber_CannotEditArticle()
+    {
+        var (writer, _) = await TestData.CreateUserWithClientAsync(_factory, UserRole.Writer);
+        var (_, subscriberClient) = await TestData.CreateUserWithClientAsync(_factory, UserRole.Subscriber);
+        var article = await TestData.CreateArticleAsync(_factory, writer.Id);
+
+        var response = await subscriberClient.PutAsJsonAsync(
+            $"/api/articles/{article.Id}",
+            new UpdateArticleRequest("New Title", "New Content"));
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Subscriber_CannotDeleteArticle()
+    {
+        var (writer, _) = await TestData.CreateUserWithClientAsync(_factory, UserRole.Writer);
+        var (_, subscriberClient) = await TestData.CreateUserWithClientAsync(_factory, UserRole.Subscriber);
+        var article = await TestData.CreateArticleAsync(_factory, writer.Id);
+
+        var response = await subscriberClient.DeleteAsync($"/api/articles/{article.Id}");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Unauthenticated_CannotEditArticle()
+    {
+        var (writer, _) = await TestData.CreateUserWithClientAsync(_factory, UserRole.Writer);
+        var article = await TestData.CreateArticleAsync(_factory, writer.Id);
+        var client = _factory.CreateClient();
+
+        var response = await client.PutAsJsonAsync(
+            $"/api/articles/{article.Id}",
+            new UpdateArticleRequest("New Title", "New Content"));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Unauthenticated_CannotDeleteArticle()
+    {
+        var (writer, _) = await TestData.CreateUserWithClientAsync(_factory, UserRole.Writer);
+        var article = await TestData.CreateArticleAsync(_factory, writer.Id);
+        var client = _factory.CreateClient();
+
+        var response = await client.DeleteAsync($"/api/articles/{article.Id}");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Writer_CanEditOwnArticle()
+    {
+        var (writer, writerClient) = await TestData.CreateUserWithClientAsync(_factory, UserRole.Writer);
+        var article = await TestData.CreateArticleAsync(_factory, writer.Id);
+
+        var response = await writerClient.PutAsJsonAsync(
+            $"/api/articles/{article.Id}",
+            new UpdateArticleRequest("Updated Title", "Updated Content"));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
 }

@@ -141,4 +141,99 @@ public sealed class CommentAuthorizationTests : IClassFixture<TestWebApplication
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Subscriber_CanEditOwnComment()
+    {
+        var (writer, _) = await TestData.CreateUserWithClientAsync(_factory, UserRole.Writer);
+        var article = await TestData.CreateArticleAsync(_factory, writer.Id);
+        var (subscriber, subscriberClient) = await TestData.CreateUserWithClientAsync(_factory, UserRole.Subscriber);
+        var comment = await TestData.CreateCommentAsync(_factory, article.Id, subscriber.Id);
+
+        var response = await subscriberClient.PutAsJsonAsync(
+            $"/api/comments/{comment.Id}",
+            new UpdateCommentRequest("Updated content"));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Subscriber_CannotDeleteOthersComment()
+    {
+        var (writer, _) = await TestData.CreateUserWithClientAsync(_factory, UserRole.Writer);
+        var article = await TestData.CreateArticleAsync(_factory, writer.Id);
+        var (subscriberA, _) = await TestData.CreateUserWithClientAsync(_factory, UserRole.Subscriber);
+        var (_, subscriberClientB) = await TestData.CreateUserWithClientAsync(_factory, UserRole.Subscriber);
+        var comment = await TestData.CreateCommentAsync(_factory, article.Id, subscriberA.Id);
+
+        var response = await subscriberClientB.DeleteAsync($"/api/comments/{comment.Id}");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Unauthenticated_CannotEditComment()
+    {
+        var (writer, _) = await TestData.CreateUserWithClientAsync(_factory, UserRole.Writer);
+        var article = await TestData.CreateArticleAsync(_factory, writer.Id);
+        var (subscriber, _) = await TestData.CreateUserWithClientAsync(_factory, UserRole.Subscriber);
+        var comment = await TestData.CreateCommentAsync(_factory, article.Id, subscriber.Id);
+        var client = _factory.CreateClient();
+
+        var response = await client.PutAsJsonAsync(
+            $"/api/comments/{comment.Id}",
+            new UpdateCommentRequest("Updated"));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Unauthenticated_CannotDeleteComment()
+    {
+        var (writer, _) = await TestData.CreateUserWithClientAsync(_factory, UserRole.Writer);
+        var article = await TestData.CreateArticleAsync(_factory, writer.Id);
+        var (subscriber, _) = await TestData.CreateUserWithClientAsync(_factory, UserRole.Subscriber);
+        var comment = await TestData.CreateCommentAsync(_factory, article.Id, subscriber.Id);
+        var client = _factory.CreateClient();
+
+        var response = await client.DeleteAsync($"/api/comments/{comment.Id}");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Writer_CannotCreateComment()
+    {
+        var (writer, writerClient) = await TestData.CreateUserWithClientAsync(_factory, UserRole.Writer);
+        var article = await TestData.CreateArticleAsync(_factory, writer.Id);
+
+        var response = await writerClient.PostAsJsonAsync(
+            $"/api/articles/{article.Id}/comments",
+            new CreateCommentRequest("Nice article"));
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Editor_CannotCreateComment()
+    {
+        var (writer, _) = await TestData.CreateUserWithClientAsync(_factory, UserRole.Writer);
+        var (_, editorClient) = await TestData.CreateUserWithClientAsync(_factory, UserRole.Editor);
+        var article = await TestData.CreateArticleAsync(_factory, writer.Id);
+
+        var response = await editorClient.PostAsJsonAsync(
+            $"/api/articles/{article.Id}/comments",
+            new CreateCommentRequest("Nice article"));
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetComments_NonExistentArticle_ReturnsNotFound()
+    {
+        var client = _factory.CreateClient();
+        var response = await client.GetAsync("/api/articles/999999/comments");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
 }

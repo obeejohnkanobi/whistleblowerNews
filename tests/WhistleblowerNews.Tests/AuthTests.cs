@@ -119,6 +119,70 @@ public sealed class AuthTests : IClassFixture<TestWebApplicationFactory>
         Assert.Equal("Editor", doc.RootElement.GetProperty("role").GetString());
     }
 
+    [Fact]
+    public async Task Login_LockedOutUser_Returns423()
+    {
+        var username = UniqueUsername("writer");
+        var user = await TestData.CreateUserAsync(_factory, UserRole.Writer, username, "locked-password1");
+        await TestData.LockoutUserAsync(_factory, user);
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/auth/login",
+            new LoginRequest(username, "locked-password1"));
+
+        Assert.Equal(HttpStatusCode.Locked, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Login_UnconfirmedEmail_ReturnsForbidden()
+    {
+        var username = UniqueUsername("subscriber");
+        var user = await TestData.CreateUnconfirmedUserAsync(_factory, UserRole.Subscriber, username, "unconfirmed-password1");
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/auth/login",
+            new LoginRequest(username, "unconfirmed-password1"));
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Logout_Succeeds()
+    {
+        var username = UniqueUsername("writer");
+        await TestData.CreateUserAsync(_factory, UserRole.Writer, username, "writer-password1");
+
+        await _client.PostAsJsonAsync(
+            "/api/auth/login",
+            new LoginRequest(username, "writer-password1"));
+
+        var response = await _client.PostAsync("/api/auth/logout", null);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Login_ValidUser_IsAudited()
+    {
+        var username = UniqueUsername("writer");
+        var user = await TestData.CreateUserAsync(_factory, UserRole.Writer, username, "audit-password1");
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/auth/login",
+            new LoginRequest(username, "audit-password1"));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var audit = db.AuditLogEntries.FirstOrDefault(a =>
+            a.EventType == AuditEventType.LoginSucceeded &&
+            a.TargetId == user.Id.ToString());
+
+        Assert.NotNull(audit);
+        Assert.Equal(AuditOutcome.Success, audit!.Outcome);
+    }
+
     private static string UniqueUsername(string prefix) =>
         $"{prefix}_{Guid.NewGuid():N}";
 }

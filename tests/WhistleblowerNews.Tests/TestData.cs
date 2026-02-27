@@ -96,4 +96,50 @@ public static class TestData
 
         return comment;
     }
+
+    public static async Task LockoutUserAsync(TestWebApplicationFactory factory, User user)
+    {
+        using var scope = factory.Services.CreateScope();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
+
+        // Reload the user to avoid EF tracking conflicts
+        var reloadedUser = await userManager.FindByIdAsync(user.Id.ToString());
+        if (reloadedUser is null)
+            throw new InvalidOperationException($"User with ID {user.Id} not found.");
+
+        await userManager.SetLockoutEndDateAsync(reloadedUser, DateTimeOffset.UtcNow.AddMinutes(10));
+    }
+
+    public static async Task<User> CreateUnconfirmedUserAsync(
+        TestWebApplicationFactory factory,
+        UserRole role,
+        string? username = null,
+        string? password = null)
+    {
+        username ??= $"{role.ToString().ToLower()}_{Guid.NewGuid():N}";
+        password ??= "password1";
+
+        using var scope = factory.Services.CreateScope();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<int>>>();
+
+        var roleName = role.ToRoleName();
+        if (!await roleManager.RoleExistsAsync(roleName))
+            await roleManager.CreateAsync(new IdentityRole<int>(roleName));
+
+        var user = new User
+        {
+            UserName = username,
+            Email = $"{username}@example.local",
+            EmailConfirmed = false,
+            LockoutEnabled = true
+        };
+        var result = await userManager.CreateAsync(user, password);
+        if (!result.Succeeded)
+            throw new InvalidOperationException(string.Join(", ", result.Errors.Select(e => e.Description)));
+
+        await userManager.AddToRoleAsync(user, roleName);
+
+        return user;
+    }
 }

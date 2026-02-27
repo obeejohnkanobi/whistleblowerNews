@@ -15,13 +15,13 @@ public sealed class ArticleOwnerOrEditorHandler
         ArticleOwnerOrEditorRequirement requirement,
         Article resource)
     {
-        if (context.User.IsInRole(UserRole.Editor.ToString()))
+        if (context.User.IsInRole(UserRoles.Editor))
         {
             context.Succeed(requirement);
             return Task.CompletedTask;
         }
 
-        if (!context.User.IsInRole(UserRole.Writer.ToString()))
+        if (!context.User.IsInRole(UserRoles.Writer))
             return Task.CompletedTask;
 
         var userId = AuthorizationHelpers.GetUserId(context.User);

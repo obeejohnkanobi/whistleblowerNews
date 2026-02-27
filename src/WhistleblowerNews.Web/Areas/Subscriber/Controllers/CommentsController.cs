@@ -61,7 +61,8 @@ public sealed class CommentsController : Controller
             return View(model);
         }
 
-        var result = await _comments.CreateAsync(User, articleId, new CreateCommentRequest(model.Content), ct);
+        var auditContext = AuditContextFactory.FromHttpContext(HttpContext);
+        var result = await _comments.CreateAsync(User, articleId, new CreateCommentRequest(model.Content), auditContext, ct);
         if (result.Status == ResultStatus.Created)
             return RedirectToAction("Details", "Articles", new { area = "Public", id = articleId });
 

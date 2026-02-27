@@ -139,7 +139,7 @@ public sealed class AccountController : Controller
             return View(model);
         }
 
-        await _userManager.AddToRoleAsync(user, UserRole.Subscriber.ToString());
+        await _userManager.AddToRoleAsync(user, UserRoles.Subscriber);
 
         var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
         var encodedToken = WebUtility.UrlEncode(token);
@@ -162,7 +162,7 @@ public sealed class AccountController : Controller
         var auditContext = AuditContextFactory.FromHttpContext(HttpContext) with
         {
             ActorUserId = user.Id,
-            ActorRole = UserRole.Subscriber.ToString()
+            ActorRole = UserRoles.Subscriber
         };
         await _audit.Success(
             AuditEventType.SubscriberRegistered,

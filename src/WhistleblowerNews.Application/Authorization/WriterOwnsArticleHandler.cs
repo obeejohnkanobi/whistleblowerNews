@@ -15,7 +15,7 @@ public sealed class WriterOwnsArticleHandler
         WriterOwnsArticleRequirement requirement,
         Article resource)
     {
-        if (!context.User.IsInRole(UserRole.Writer.ToString()))
+        if (!context.User.IsInRole(UserRoles.Writer))
             return Task.CompletedTask;
 
         var userId = AuthorizationHelpers.GetUserId(context.User);

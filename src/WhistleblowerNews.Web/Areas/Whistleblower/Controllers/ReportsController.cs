@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WhistleblowerNews.Application.Common;
 using WhistleblowerNews.Application.Reports;
+using WhistleblowerNews.Web.Infrastructure;
 using WhistleblowerNews.Web.Models.Reports;
 
 namespace WhistleblowerNews.Web.Areas.Whistleblower.Controllers;
@@ -30,8 +31,10 @@ public sealed class ReportsController : Controller
         if (!ModelState.IsValid)
             return View(model);
 
+        var auditContext = AuditContextFactory.FromHttpContext(HttpContext);
         var result = await _reports.CreateReportAsync(
             new CreateReportRequest(model.Title, model.Description),
+            auditContext,
             ct);
 
         if (result.Status == ResultStatus.Created)

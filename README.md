@@ -99,6 +99,11 @@ dotnet test
 ```
 Tests use an in-memory EF Core database.
 
+> **Note on rate-limiting tests:** `RateLimitingTests.cs` exercises the fixed-window limiters.
+> Because the in-memory test host shares rate-limit state across test runs in the same process,
+> these tests may be flaky when run in parallel with other test classes.
+> Run them in isolation if needed: `dotnet test --filter "FullyQualifiedName~RateLimitingTests"`.
+
 ## GitHub Codespaces
 1. Open the repo in Codespaces.
 2. Ensure .NET SDK 10.0 is available (`dotnet --version`).

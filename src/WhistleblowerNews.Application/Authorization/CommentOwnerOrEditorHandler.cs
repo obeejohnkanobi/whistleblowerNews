@@ -15,13 +15,13 @@ public sealed class CommentOwnerOrEditorHandler
         CommentOwnerOrEditorRequirement requirement,
         Comment resource)
     {
-        if (context.User.IsInRole(UserRole.Editor.ToString()))
+        if (context.User.IsInRole(UserRoles.Editor))
         {
             context.Succeed(requirement);
             return Task.CompletedTask;
         }
 
-        if (!context.User.IsInRole(UserRole.Subscriber.ToString()))
+        if (!context.User.IsInRole(UserRoles.Subscriber))
             return Task.CompletedTask;
 
         var userId = AuthorizationHelpers.GetUserId(context.User);

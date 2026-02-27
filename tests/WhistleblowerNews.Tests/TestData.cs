@@ -22,7 +22,7 @@ public static class TestData
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<int>>>();
 
-        var roleName = role.ToString();
+        var roleName = role.ToRoleName();
         if (!await roleManager.RoleExistsAsync(roleName))
             await roleManager.CreateAsync(new IdentityRole<int>(roleName));
 

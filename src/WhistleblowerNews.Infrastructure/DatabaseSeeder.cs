@@ -24,10 +24,10 @@ public static class DatabaseSeeder
             return;
 
         // Ensure roles exist
-        foreach (var role in Enum.GetNames<UserRole>())
+        foreach (var roleName in UserRoles.All)
         {
-            if (!await roleManager.RoleExistsAsync(role))
-                await roleManager.CreateAsync(new IdentityRole<int>(role));
+            if (!await roleManager.RoleExistsAsync(roleName))
+                await roleManager.CreateAsync(new IdentityRole<int>(roleName));
         }
 
         // Create deterministic demo users (for teacher demos and tests)
@@ -55,7 +55,7 @@ public static class DatabaseSeeder
         if (!result.Succeeded)
             return;
 
-        await userManager.AddToRoleAsync(user, role.ToString());
+        await userManager.AddToRoleAsync(user, role.ToRoleName());
     }
 }
 

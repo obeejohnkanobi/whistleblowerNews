@@ -26,6 +26,7 @@ public sealed class ReportService
 
     public async Task<ServiceResult<CreateReportResponse>> CreateReportAsync(
         CreateReportRequest request,
+        AuditContext auditContext,
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.Title) || string.IsNullOrWhiteSpace(request.Description))
@@ -42,6 +43,14 @@ public sealed class ReportService
         _db.Reports.Add(report);
         _db.ReporterSecrets.Add(secret);
         await _db.SaveChangesAsync(ct);
+
+        await _audit.Success(
+            AuditEventType.ReportCreated,
+            "Report",
+            caseId.ToString(),
+            caseId,
+            auditContext,
+            ct);
 
         return ServiceResult<CreateReportResponse>.Created(new CreateReportResponse(caseId, token));
     }
@@ -65,6 +74,9 @@ public sealed class ReportService
 
         if (report.ReporterSecret is null || !VerifyReporterToken(reporterToken, report.ReporterSecret.SecretHash))
             return ServiceResult<ReportDetailsDto>.Forbidden("Invalid reporter token.");
+
+        if (IsTokenExpired(report.ReporterSecret.CreatedAt))
+            return ServiceResult<ReportDetailsDto>.Forbidden("Reporter token has expired.");
 
         var dto = MapReportDetails(report);
         return ServiceResult<ReportDetailsDto>.Ok(dto);
@@ -91,7 +103,7 @@ public sealed class ReportService
         if (!userId.HasValue)
             return ServiceResult<ReportDetailsDto>.Unauthorized("Authentication required.");
 
-        if (!user.IsInRole(UserRole.Editor.ToString()))
+        if (!user.IsInRole(UserRoles.Editor))
         {
             var assignment = await _db.InvestigatorAssignments
                 .AsNoTracking()
@@ -118,7 +130,7 @@ public sealed class ReportService
 
         IQueryable<Report> query = _db.Reports.AsNoTracking();
 
-        if (!user.IsInRole(UserRole.Editor.ToString()))
+        if (!user.IsInRole(UserRoles.Editor))
         {
             query = from report in _db.Reports.AsNoTracking()
                     join assignment in _db.InvestigatorAssignments.AsNoTracking()
@@ -137,6 +149,42 @@ public sealed class ReportService
             .ToListAsync(ct);
 
         return ServiceResult<IReadOnlyList<ReportSummaryDto>>.Ok(items);
+    }
+
+    public async Task<ServiceResult<RotateTokenResponse>> RotateTokenAsync(
+        Guid caseId,
+        RotateTokenRequest request,
+        AuditContext auditContext,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.CurrentToken))
+            return ServiceResult<RotateTokenResponse>.BadRequest("Current token is required.");
+
+        var secret = await _db.ReporterSecrets
+            .SingleOrDefaultAsync(s => s.CaseId == caseId, ct);
+
+        if (secret is null)
+            return ServiceResult<RotateTokenResponse>.NotFound("Report not found.");
+
+        if (!VerifyReporterToken(request.CurrentToken, secret.SecretHash))
+            return ServiceResult<RotateTokenResponse>.Forbidden("Invalid reporter token.");
+
+        var newToken = GenerateReporterToken();
+        var salt = PasswordHasher.GenerateSalt();
+        var hash = PasswordHasher.HashPassword(newToken, salt);
+        secret.RotateSecret($"{salt}${hash}");
+
+        await _db.SaveChangesAsync(ct);
+
+        await _audit.Success(
+            AuditEventType.TokenRotated,
+            "Report",
+            caseId.ToString(),
+            caseId,
+            auditContext,
+            ct);
+
+        return ServiceResult<RotateTokenResponse>.Ok(new RotateTokenResponse(newToken));
     }
 
     public async Task<ServiceResult> RequestInfoAsync(
@@ -161,7 +209,7 @@ public sealed class ReportService
         if (!userId.HasValue)
             return ServiceResult.Unauthorized("Authentication required.");
 
-        if (!user.IsInRole(UserRole.Editor.ToString()))
+        if (!user.IsInRole(UserRoles.Editor))
         {
             var assignmentOk = await EnsureAssignmentAsync(report.CaseId, userId.Value, ct);
             if (!assignmentOk)
@@ -211,7 +259,7 @@ public sealed class ReportService
         if (!userId.HasValue)
             return ServiceResult.Unauthorized("Authentication required.");
 
-        if (!user.IsInRole(UserRole.Editor.ToString()))
+        if (!user.IsInRole(UserRoles.Editor))
         {
             var assignmentOk = await EnsureAssignmentAsync(report.CaseId, userId.Value, ct);
             if (!assignmentOk)
@@ -260,6 +308,9 @@ public sealed class ReportService
         var bytes = RandomNumberGenerator.GetBytes(32);
         return Convert.ToHexString(bytes);
     }
+
+    private static bool IsTokenExpired(DateTime createdAt, int expiryDays = 90)
+        => DateTime.UtcNow - createdAt > TimeSpan.FromDays(expiryDays);
 
     private static bool VerifyReporterToken(string token, string secretHash)
     {

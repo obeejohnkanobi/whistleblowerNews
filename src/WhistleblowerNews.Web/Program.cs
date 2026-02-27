@@ -197,16 +197,16 @@ builder.Services.ConfigureApplicationCookie(options =>
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy(AuthorizationPolicies.IsWriter, policy =>
-        policy.RequireRole(UserRole.Writer.ToString()));
+        policy.RequireRole(UserRoles.Writer));
 
     options.AddPolicy(AuthorizationPolicies.IsEditor, policy =>
-        policy.RequireRole(UserRole.Editor.ToString()));
+        policy.RequireRole(UserRoles.Editor));
 
     options.AddPolicy(AuthorizationPolicies.IsSubscriber, policy =>
-        policy.RequireRole(UserRole.Subscriber.ToString()));
+        policy.RequireRole(UserRoles.Subscriber));
 
     options.AddPolicy(AuthorizationPolicies.IsInvestigator, policy =>
-        policy.RequireRole(UserRole.Investigator.ToString(), UserRole.Editor.ToString()));
+        policy.RequireRole(UserRoles.Investigator, UserRoles.Editor));
 
     options.AddPolicy(AuthorizationPolicies.ArticleOwnerOrEditor, policy =>
         policy.Requirements.Add(new ArticleOwnerOrEditorRequirement()));

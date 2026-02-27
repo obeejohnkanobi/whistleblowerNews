@@ -98,17 +98,61 @@ sequenceDiagram
 ## Component diagram (high level)
 ```mermaid
 graph TD
-    Reporter[Anonymous Reporter] --> API[Whistleblower API]
-    Investigator[Investigator] --> API
-    Editor[Editor] --> API
+    Reporter([Anonymous Reporter])
+    Staff([Investigator / Editor])
+    Browser([Subscriber / Writer / Editor<br/>MVC Browser Client])
 
-    API --> Auth[Cookie Auth + Policies]
-    API --> DB[(Database)]
-    DB --> Reports[Reports]
-    DB --> Secrets[ReporterSecret (hashed)]
-    DB --> Messages[ReportMessages]
-    DB --> Assignments[InvestigatorAssignments]
-    DB --> Audit[AuditLog]
+    subgraph WhistleblowerNews.Web
+        API[REST API Controllers<br/>/api/reports · /api/articles · /api/comments]
+        MVC[MVC Controllers<br/>Account / Areas]
+        RateLimit[Rate Limiter<br/>report-submit · reporter-token]
+        SecHeaders[Security Middleware<br/>HSTS · CSP · X-Frame-Options]
+    end
+
+    subgraph WhistleblowerNews.Application
+        ReportSvc[ReportService]
+        ArticleSvc[ArticleService]
+        CommentSvc[CommentService]
+        AuthzHandlers[Authorization Handlers<br/>ArticleOwnerOrEditor<br/>CommentOwnerOrEditor<br/>WriterOwnsArticle]
+        AuditSvc[AuditService]
+    end
+
+    subgraph WhistleblowerNews.Infrastructure
+        EF[ApplicationDbContext<br/>EF Core / SQLite]
+        Seeder[DatabaseSeeder]
+    end
+
+    DB[(SQLite Database)]
+
+    Reporter -->|POST /api/reports| RateLimit
+    Reporter -->|GET /api/reports id<br/>X-Reporter-Token header| RateLimit
+    RateLimit --> API
+    Staff -->|Cookie auth| API
+    Browser -->|Cookie auth| MVC
+    SecHeaders --> Reporter
+    SecHeaders --> Staff
+    SecHeaders --> Browser
+
+    API --> ReportSvc
+    API --> ArticleSvc
+    API --> CommentSvc
+    MVC --> ReportSvc
+    MVC --> ArticleSvc
+    MVC --> CommentSvc
+
+    ReportSvc --> AuditSvc
+    ArticleSvc --> AuditSvc
+    CommentSvc --> AuditSvc
+    ReportSvc --> AuthzHandlers
+    ArticleSvc --> AuthzHandlers
+    CommentSvc --> AuthzHandlers
+
+    AuditSvc --> EF
+    ReportSvc --> EF
+    ArticleSvc --> EF
+    CommentSvc --> EF
+    Seeder --> EF
+    EF --> DB
 ```
 
 ## Architecture (Clean Architecture)

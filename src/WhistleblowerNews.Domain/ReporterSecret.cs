@@ -10,11 +10,21 @@ public class ReporterSecret
 
     public string SecretHash { get; private set; } = string.Empty;
 
+    /// <summary>When the token was issued. Used to enforce expiry.</summary>
+    public DateTime CreatedAt { get; private set; }
+
     private ReporterSecret() { }
 
     public ReporterSecret(Guid caseId, string secretHash)
     {
         CaseId = caseId;
         SecretHash = secretHash;
+        CreatedAt = DateTime.UtcNow;
+    }
+
+    public void RotateSecret(string newSecretHash)
+    {
+        SecretHash = newSecretHash;
+        CreatedAt = DateTime.UtcNow;
     }
 }

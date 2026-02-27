@@ -12,5 +12,9 @@ public enum AuditEventType
     ArticleDeleted = 7,
     AuthorizationDenied = 8,
     RateLimitTriggered = 9,
-    SubscriberRegistered = 10
+    SubscriberRegistered = 10,
+    ArticleCreated = 11,
+    CommentCreated = 12,
+    ReportCreated = 13,
+    TokenRotated = 14
 }

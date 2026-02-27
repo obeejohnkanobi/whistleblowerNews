@@ -27,7 +27,8 @@ public sealed class ReportsController : ControllerBase
         [FromBody] CreateReportRequest request,
         CancellationToken ct)
     {
-        var result = await _reports.CreateReportAsync(request, ct);
+        var auditContext = AuditContextFactory.FromHttpContext(HttpContext);
+        var result = await _reports.CreateReportAsync(request, auditContext, ct);
 
         return result.Status switch
         {
@@ -58,6 +59,34 @@ public sealed class ReportsController : ControllerBase
 
         var result = await _reports.GetReportForReporterAsync(caseId, token, ct);
         return ToActionResult(result);
+    }
+
+    [HttpPost("{caseId:guid}/rotate-token")]
+    [EnableRateLimiting("reporter-token-policy")]
+    public async Task<ActionResult<RotateTokenResponse>> RotateToken(
+        Guid caseId,
+        [FromBody] RotateTokenRequest request,
+        CancellationToken ct)
+    {
+        if (Request.Query.ContainsKey("token"))
+        {
+            return Problem(
+                title: "Reporter token cannot be supplied via query string.",
+                detail: "Send the reporter token in the request body.",
+                statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        var auditContext = AuditContextFactory.FromHttpContext(HttpContext);
+        var result = await _reports.RotateTokenAsync(caseId, request, auditContext, ct);
+
+        return result.Status switch
+        {
+            ResultStatus.Ok => Ok(result.Value),
+            ResultStatus.BadRequest => BadRequest(result.Error),
+            ResultStatus.NotFound => NotFound(),
+            ResultStatus.Forbidden => Forbid(),
+            _ => StatusCode(StatusCodes.Status500InternalServerError)
+        };
     }
 
     [HttpPost("{caseId:guid}/request-info")]

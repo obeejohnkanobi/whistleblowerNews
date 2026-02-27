@@ -258,4 +258,119 @@ public sealed class ReportTests : IClassFixture<TestWebApplicationFactory>
         request.Headers.Add("X-Reporter-Token", token);
         return request;
     }
+
+    [Fact]
+    public async Task GetReport_ExpiredToken_ReturnsForbidden()
+    {
+        var client = _factory.CreateClient();
+        var create = await client.PostAsJsonAsync(
+            "/api/reports",
+            new CreateReportRequest("Title", "Description"));
+
+        var payload = await create.Content.ReadFromJsonAsync<CreateReportResponse>();
+
+        // Backdate the token's CreatedAt beyond the 90-day expiry window
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var secret = db.ReporterSecrets.Single(s => s.CaseId == payload!.CaseId);
+            db.Entry(secret).Property("CreatedAt").CurrentValue = DateTime.UtcNow.AddDays(-91);
+            await db.SaveChangesAsync();
+        }
+
+        var request = CreateReportRequest(payload!.CaseId, payload.ReporterToken);
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task RotateToken_WithValidToken_ReturnsNewToken()
+    {
+        var client = _factory.CreateClient();
+        var create = await client.PostAsJsonAsync(
+            "/api/reports",
+            new CreateReportRequest("Title", "Description"));
+
+        var payload = await create.Content.ReadFromJsonAsync<CreateReportResponse>();
+
+        var rotateResponse = await client.PostAsJsonAsync(
+            $"/api/reports/{payload!.CaseId}/rotate-token",
+            new RotateTokenRequest(payload.ReporterToken));
+
+        Assert.Equal(HttpStatusCode.OK, rotateResponse.StatusCode);
+
+        var rotated = await rotateResponse.Content.ReadFromJsonAsync<RotateTokenResponse>();
+        Assert.NotNull(rotated);
+        Assert.False(string.IsNullOrWhiteSpace(rotated!.NewReporterToken));
+        Assert.NotEqual(payload.ReporterToken, rotated.NewReporterToken);
+    }
+
+    [Fact]
+    public async Task RotateToken_OldTokenNoLongerWorks()
+    {
+        var client = _factory.CreateClient();
+        var create = await client.PostAsJsonAsync(
+            "/api/reports",
+            new CreateReportRequest("Title", "Description"));
+
+        var payload = await create.Content.ReadFromJsonAsync<CreateReportResponse>();
+
+        await client.PostAsJsonAsync(
+            $"/api/reports/{payload!.CaseId}/rotate-token",
+            new RotateTokenRequest(payload.ReporterToken));
+
+        // Old token should now be invalid
+        var request = CreateReportRequest(payload.CaseId, payload.ReporterToken);
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task RotateToken_WithInvalidToken_ReturnsForbidden()
+    {
+        var client = _factory.CreateClient();
+        var create = await client.PostAsJsonAsync(
+            "/api/reports",
+            new CreateReportRequest("Title", "Description"));
+
+        var payload = await create.Content.ReadFromJsonAsync<CreateReportResponse>();
+
+        var rotateResponse = await client.PostAsJsonAsync(
+            $"/api/reports/{payload!.CaseId}/rotate-token",
+            new RotateTokenRequest("wrongtoken"));
+
+        Assert.Equal(HttpStatusCode.Forbidden, rotateResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateStatus_RequiresInvestigatorOrEditor()
+    {
+        var client = _factory.CreateClient();
+        var create = await client.PostAsJsonAsync(
+            "/api/reports",
+            new CreateReportRequest("Title", "Description"));
+        var payload = await create.Content.ReadFromJsonAsync<CreateReportResponse>();
+
+        // Guest is rejected
+        var guestResponse = await client.PatchAsJsonAsync(
+            $"/api/reports/{payload!.CaseId}/status",
+            new UpdateReportStatusRequest("InReview"));
+        Assert.Equal(HttpStatusCode.Unauthorized, guestResponse.StatusCode);
+
+        // Subscriber is rejected
+        var (_, subscriberClient) = await TestData.CreateUserWithClientAsync(_factory, UserRole.Subscriber);
+        var subscriberResponse = await subscriberClient.PatchAsJsonAsync(
+            $"/api/reports/{payload.CaseId}/status",
+            new UpdateReportStatusRequest("InReview"));
+        Assert.Equal(HttpStatusCode.Forbidden, subscriberResponse.StatusCode);
+
+        // Writer is rejected
+        var (_, writerClient) = await TestData.CreateUserWithClientAsync(_factory, UserRole.Writer);
+        var writerResponse = await writerClient.PatchAsJsonAsync(
+            $"/api/reports/{payload.CaseId}/status",
+            new UpdateReportStatusRequest("InReview"));
+        Assert.Equal(HttpStatusCode.Forbidden, writerResponse.StatusCode);
+    }
 }

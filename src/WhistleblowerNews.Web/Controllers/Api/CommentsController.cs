@@ -39,7 +39,8 @@ public sealed class CommentsController : ControllerBase
         [FromBody] CreateCommentRequest request,
         CancellationToken ct)
     {
-        var result = await _comments.CreateAsync(User, articleId, request, ct);
+        var auditContext = AuditContextFactory.FromHttpContext(HttpContext);
+        var result = await _comments.CreateAsync(User, articleId, request, auditContext, ct);
 
         return result.Status switch
         {

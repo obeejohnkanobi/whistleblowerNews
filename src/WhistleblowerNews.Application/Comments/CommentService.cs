@@ -103,6 +103,7 @@ public sealed class CommentService
         ClaimsPrincipal user,
         int articleId,
         CreateCommentRequest request,
+        AuditContext auditContext,
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.Content))
@@ -123,6 +124,14 @@ public sealed class CommentService
         var comment = new Comment(request.Content.Trim(), articleId, userId.Value);
         _db.Comments.Add(comment);
         await _db.SaveChangesAsync(ct);
+
+        await _audit.Success(
+            AuditEventType.CommentCreated,
+            "Comment",
+            comment.Id.ToString(),
+            null,
+            auditContext,
+            ct);
 
         var author = await _db.Users.AsNoTracking().SingleAsync(u => u.Id == userId.Value, ct);
 

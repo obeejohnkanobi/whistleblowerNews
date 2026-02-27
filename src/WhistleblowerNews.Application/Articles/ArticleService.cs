@@ -60,6 +60,7 @@ public sealed class ArticleService
     public async Task<ServiceResult<ArticleDto>> CreateAsync(
         ClaimsPrincipal user,
         CreateArticleRequest request,
+        AuditContext auditContext,
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.Title) || string.IsNullOrWhiteSpace(request.Content))
@@ -76,6 +77,14 @@ public sealed class ArticleService
         var article = new Article(request.Title.Trim(), request.Content.Trim(), userId.Value);
         _db.Articles.Add(article);
         await _db.SaveChangesAsync(ct);
+
+        await _audit.Success(
+            AuditEventType.ArticleCreated,
+            "Article",
+            article.Id.ToString(),
+            null,
+            auditContext,
+            ct);
 
         var author = await _db.Users.AsNoTracking().SingleAsync(u => u.Id == userId.Value, ct);
 

@@ -38,7 +38,8 @@ public sealed class ArticlesController : ControllerBase
         [FromBody] CreateArticleRequest request,
         CancellationToken ct)
     {
-        var result = await _articles.CreateAsync(User, request, ct);
+        var auditContext = AuditContextFactory.FromHttpContext(HttpContext);
+        var result = await _articles.CreateAsync(User, request, auditContext, ct);
 
         return result.Status switch
         {

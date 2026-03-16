@@ -111,3 +111,34 @@ Tests use an in-memory EF Core database.
 4. Run `dotnet run --project src/WhistleblowerNews.Web --launch-profile https`.
 5. Open forwarded port 7080 or 5048.
 6. Run `dotnet test`.
+
+
+## Krav
+- Docker Desktop (Windows/Mac) eller Docker Engine + Docker Compose plugin (Linux/Arch)
+
+## Start projektet
+```bash
+docker compose up --build
+```
+
+API er tilgængeligt på: http://localhost:8080
+
+Tests køres automatisk under build. Hvis tests fejler, stopper buildet.
+
+## Stop projektet
+```bash
+docker compose down
+```
+```
+
+---
+
+**Copilot-prompt til at tilpasse** (paste i Rider eller VS Code):
+```
+I have an ASP.NET Core Web API solution with this structure:
+- *.sln at root
+- src/<ProjectName>/<ProjectName>.csproj
+- tests/<TestProject>/<TestProject>.csproj (xUnit)
+
+Update the Dockerfile so the publish command references the correct .csproj path.
+Verify the test stage runs all xUnit tests before building.
